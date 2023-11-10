@@ -1,0 +1,88 @@
+- name: play-1 Configure httpd server
+  #hosts: my_ec2
+  hosts: all
+  become: yes
+  tasks: 
+  - name: install packages 
+    vars:
+      ansible_python_interpreter: /usr/bin/python
+    yum:
+      name:
+      - python
+      - python3
+      - pip
+      - docker
+      - httpd
+      - vim
+      - net-tools
+      #- mysql-server
+      - mysql
+      - bash-completion.noarch      
+      - zip
+      update_cache: yes
+      state: present
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl         
+  - name: start & enable httpd
+    systemd: 
+      name: httpd
+      state: started
+      enabled: true   
+  - name: Install the php remote repo
+    ansible.builtin.dnf:
+      name: 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm'
+      state: present
+      disable_gpg_check: true
+  # - name: Install the nginx rpm from a remote repo
+  #   ansible.builtin.dnf:
+  #     name: 'https://rpms.remirepo.net/enterprise/remi-release-8.rpm'
+  #     state: present 
+  #     disable_gpg_check: true
+  - name : enable dnf module enable php
+    command: dnf module -y enable php
+  - name: Install the latest version of Apache from the testing repo
+    ansible.builtin.dnf:
+      name:
+      - php 
+      - php-cli 
+      - php-common
+      - php-mysqlnd
+  - name: Copy html files
+    copy:
+      src: /home/ahmed/Desktop/terraform/general-project-beta/redhat/html_ali/
+      dest: /var/www/html/
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: http      
+  - name: Reload service httpd
+    ansible.builtin.systemd:
+      name: httpd.service
+      state: restarted
+
+  # - name: Allow Apache to listen on tcp port 8888
+  #   community.general.seport:
+  #     ports: 81-89,8888
+  #     proto: tcp
+  #     setype: http_port_t
+  #     state: present
+  # - name: permit traffic in default zone for https service
+  #   ansible.posix.firewalld:
+  #     service: https
+  #     permanent: true
+  #     state: enabled
+  # - ansible.posix.firewalld:
+  #     zone: trusted
+  #     interface: eth2
+  #     permanent: true
+  #     state: enabled    
+  - name: Put SELinux in permissive mode, logging actions that would be blocked.
+    ansible.posix.selinux:
+      policy: targeted
+      state: permissive
+
+# setenforc 0
+# Modify the database address in addcontact.php man 

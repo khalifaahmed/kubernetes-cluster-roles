@@ -1,0 +1,230 @@
+- name: play-1 
+  #hosts: my_ec2
+  hosts: all
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python  
+  tasks: 
+  - name: installing packages
+    vars:
+      ansible_python_interpreter: /usr/bin/python
+    yum:
+      name:
+      - python
+      - python3
+      - pip
+      - httpd
+      - vim
+      - net-tools
+      - mysql                                #- mysql-server
+      - firewalld                            #- firewalld-1.0.0-4.el9.noarch
+      - bash-completion.noarch
+      - amazon-linux-extras
+      - policycoreutils-python
+      update_cache: yes
+      state: present
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl    
+        
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: http    
+  - name: start & enable httpd
+    systemd: 
+      name: httpd
+      state: started
+      enabled: true   
+  - name: start & enable firewalld
+    systemd: 
+      name: firewalld
+      state: started
+      enabled: true         
+  - name: yum-clean-metadata
+    ansible.builtin.command: yum clean metadata
+  - name : enable amazon-linux-extras
+    command: amazon-linux-extras enable php8.1
+  - name: Install the latest version php-cli php-pdo php-fpm php-json php-mysqlnd
+    ansible.builtin.yum:
+      name:
+      - php-cli 
+      - php-pdo 
+      - php-fpm 
+      - php-json 
+      - php-mysqlnd
+  - name: Copy html files
+    copy:
+      src: /home/ahmed/Desktop/terraform/general-project-beta/redhat/html_files/
+      dest: /var/www/html/
+  - name: make http work on port 82 in the conf file 
+    lineinfile: 
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^Listen 80'
+      line: Listen 82
+  - name: Put SELinux in enforcing mode
+    ansible.posix.selinux:
+      policy: targeted
+      state: enforcing
+    register: output_of_enable_selinux
+  - name: show the output of enabling selinux
+    debug:
+      msg: 
+      - "the acl_info register =  {{output_of_enable_selinux}}"
+  - name: Reboot machine and send a message
+    ansible.builtin.reboot:
+      msg: "Rebooting machine in 5 seconds"   
+    when: output_of_enable_selinux.changed and output_of_enable_selinux.reboot_required
+  - name: Change the httpd_t domain to permissive
+    community.general.selinux_permissive:
+      name: firewalld_t
+      permissive: true    
+  - name: Allow Apache to listen on tcp port 82
+    community.general.seport:
+      ports: 81-89,8888
+      proto: tcp
+      setype: http_port_t
+      state: present
+  - name: permit traffic in the default zone for https service
+    ansible.posix.firewalld:
+      service: http
+      permanent: true
+      state: enabled
+  - name: allow traffic on port 82 from firewall
+    ansible.posix.firewalld:
+      port: 82/tcp
+      permanent: true
+      state: enabled
+  - name: add eth0 to public zone
+    ansible.posix.firewalld:
+      zone: public
+      interface: eth0
+      permanent: true
+      state: enabled    
+  - name: Reload service httpd
+    ansible.builtin.systemd:
+      name: httpd.service
+      state: restarted
+  - name: Reload service firewalld
+    ansible.builtin.systemd:
+      name: firewalld.service
+      state: restarted               
+  - name: Install docker-compose
+    get_url: 
+      #url: https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Linux-{{lookup('pipe', 'uname -m')}}
+      url: https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-linux-x86_64 
+      dest: /usr/local/bin/docker-compose
+      mode: +x
+  - name: Copy docker compose file 
+    copy:
+      src: /home/ahmed/Desktop/terraform/general-project-beta/ec2-docker/docker-compose.yaml
+      dest: /home/ec2-user/docker-compose.yaml
+  - name: Ensure docker group exits
+    group:
+      name: docker
+      state: present   
+  - name: Add the user 'ec2-user' to the docker group appendingly
+    ansible.builtin.user:
+      name: ec2-user
+      groups: docker
+      append: yes      
+  # - name: Grant user ec2-user use docker 
+  #   ansible.posix.acl:
+  #     path: /var/run/podman/podman.sock
+  #     entity: ec2-user
+  #     etype: user
+  #     permissions: rwx
+  #     state: present
+  # - name: Grant user ec2-user use docker another way
+  #   file:
+  #     path: /var/run/podman/podman.sock
+  #     state: file       
+  #     mode: '0777'
+  #     #mode: u+rw,g-wx,o-rwx
+
+# setenforc 0
+# Modify the database address in addcontact.php man 
+
+
+
+
+
+
+- name: install aws cli 
+  hosts: all
+  vars:
+    ansible_python_interpreter: /usr/bin/python    
+  tasks: 
+  - name: Download the awscli bundle.
+    get_url: url=https://s3.amazonaws.com/aws-cli/awscli-bundle.zip dest=/tmp/awscli-bundle.zip
+    register: aws_cli_download_bundle
+  - name: Unarchive the installer.
+    unarchive: src=/tmp/awscli-bundle.zip dest=/tmp copy=no creates=/tmp/awscli-bundle
+    when: aws_cli_download_bundle.changed
+    register: aws_cli_unarchive_installer
+  - name: Install awscli package.
+    become: yes
+    shell: python3 /tmp/awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+    args:
+      creates: /usr/bin/aws
+    when: aws_cli_unarchive_installer.changed
+
+
+# - name: play-2
+#   hosts: all
+#   tasks: 
+#   - name:  Check if aws folder exists
+#     stat:
+#       path: /home/ec2-user/aws
+#     register: stat_aws_result
+#   - name: output the register stat_aws_result value
+#     debug:
+#       msg: 
+#       - "the stat_aws_result register =  {{stat_aws_result}} "  
+
+#   - name:  Download awscli
+#     get_url:
+#       url: https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip
+#       dest: /home/ec2-user/awscliv2.zip
+#     when: not stat_aws_result.stat.exists
+#     register: download_result
+#   - name: output the register download_result value
+#     debug:
+#       msg: 
+#       - "the download_result register =  {{download_result}}"  
+
+#   - name: Untar awscli installer
+#     unarchive:
+#       src: "{{download_result.dest}}"
+#       dest: /home/ec2-user/
+#       remote_src: yes
+#     when: not stat_aws_result.stat.exists
+#     register: unarchive_result
+#   - name: output the register unarchive_result value
+#     debug:
+#       msg: 
+#       - "the unarchive_result register =  {{unarchive_result}} "  
+#     when: not stat_aws_result.stat.exists
+
+#   - name: install awscli
+#     become: yes
+#     ansible.builtin.command: 
+#       cmd: /home/ec2-user/aws/install      
+
+
+
+# - name: play-2
+#   hosts: all
+#   tasks: 
+#   - name: download awscli
+#     ansible.builtin.command: 
+#       cmd:  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"       
+#   - name: upzip awscli
+#     ansible.builtin.command: 
+#       cmd:  unzip awscliv2.zip       
+#   - name: install awscli
+#     ansible.builtin.command: 
+#       cmd:  sudo ./aws/install       
+

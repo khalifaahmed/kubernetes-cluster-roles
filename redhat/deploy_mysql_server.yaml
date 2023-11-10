@@ -1,0 +1,96 @@
+- name: play-1 
+  #hosts: my_ec2
+  hosts: all
+  become: yes
+  tasks: 
+  - name: install packages 
+    vars:
+      ansible_python_interpreter: /usr/bin/python
+    yum:
+      name:
+      - python
+      - python3
+      - pip
+      - docker
+      - vim
+      - net-tools
+      - mysql-server
+      - mysql
+      - bash-completion.noarch     
+      - zip 
+      update_cache: yes
+      state: present
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl         
+  - name: start & enable mysqld
+    systemd: 
+      name: mysqld
+      state: started
+      enabled: true      
+  - name: Install docker mysql module
+    vars:
+      ansible_python_interpreter: /usr/bin/python
+    pip: 
+      name: 
+      - mysql-connector 
+      - PyMySQL   
+  # - name: Install docker python module
+  #   vars:
+  #     ansible_python_interpreter: /usr/bin/python3
+  #   pip: 
+  #     name: 
+  #     - mysql-connector          
+  - name: Create database user with password and all database privileges and 'WITH GRANT OPTION'
+    community.mysql.mysql_user:
+      name: iti
+      password: iti
+      priv: '*.*:ALL,GRANT'
+      state: present
+      host: '%'
+      # host_all: true   #not allowed here mainly
+      # session_vars:
+      #   wsrep_on: off
+  - name: Removes all anonymous user accounts
+    community.mysql.mysql_user:
+      name: 'iti'
+      host_all: true
+      state: present      
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: db-server   
+  - name: Reconnect to server session
+    meta: reset_connection      
+  - name: Create a new database with name 'iti'
+    community.mysql.mysql_db:
+      name: iti
+      state: present
+      # login_unix_socket: /run/mysqld/mysqld.sock
+  - name: Run several insert queries against db test_db in single transaction
+    community.mysql.mysql_query:
+      login_db: iti
+      query:
+      # - create table userinfo (fname varchar(15), lname varchar(15), email varchar(30)  , constraint c1 primary key (fname))
+      #- create table userinfo (fname varchar(15), lname varchar(15), email varchar(30) )
+      - create table userinfo (id int not null auto_increment, firstname varchar(25), lastname varchar(25), age int, email varchar(40) ,constraint c1 primary key (id))
+
+# - name: install aws cli 
+#   hosts: all
+#   tasks: 
+#   - name: Download the awscli bundle.
+#     get_url: url=https://s3.amazonaws.com/aws-cli/awscli-bundle.zip dest=/tmp/awscli-bundle.zip
+#     register: aws_cli_download_bundle
+#   - name: Unarchive the installer.
+#     unarchive: src=/tmp/awscli-bundle.zip dest=/tmp copy=no creates=/tmp/awscli-bundle
+#     when: aws_cli_download_bundle.changed
+#     register: aws_cli_unarchive_installer
+#   - name: Install awscli package.
+#     become: yes
+#     shell: python3 /tmp/awscli-bundle/install -i /usr/local/aws -b /usr/bin/aws
+#     args:
+#       creates: /usr/bin/aws
+#     when: aws_cli_unarchive_installer.changed
+

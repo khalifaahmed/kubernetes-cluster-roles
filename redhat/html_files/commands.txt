@@ -1,0 +1,84 @@
+[root@http-server html]# history
+    4  yum update
+    7  yum install httpd vim net-tools
+   24  systemctl enable --now httpd
+   27  systemctl status httpd
+
+   29  firewall-cmd
+   30  yum install firewall-cmd
+   31  systemctl status firewall-cmd
+
+   35  hostnamectl set-hostname http-server
+
+   38  yum install -y  mysql-client
+   39  yum install -y  mysql
+   43  mysql -u iti -h 10.10.3.64 -p
+
+   45  vim /var/www/html/index.html
+   49  vim addcontact.php
+
+   50  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+   51  dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm
+   53  ls /etc/yum.repos.d/
+   56  dnf module list php
+   59  dnf module enable php:remi-8.1
+   61  dnf module enable php
+   67  dnf module enable php
+   69  dnf install php php-cli php-common
+   70  php -v
+
+   73  systemctl restart httpd
+   74  yum install -y php-mysqlnd
+   76  php -m | grep -i mysqlnd
+
+   79  vim addcontact.php
+   80  vim index.html
+   84  systemctl restart httpd
+
+   87  mysql -u iti -h 3.80.54.230 -p
+
+   89  setenforce 0
+
+   91  history
+
+#####################################################################################################################################
+
+[root@DB-server ~]# history
+    3  yum -y update
+    4  yum -y install vim net-tools httpd
+    8  yum install -y mysql-server
+   10  systemctl status mysql
+
+   12  hostnamectl set-hostname DB-server
+
+   15  firewall-cmd
+   17  yum install firewall-cmd
+
+   18  systemctl enable --now mysqld
+   20  systemctl status mysqld
+
+   28  mysql_secure_installation
+
+   32  ip add sh
+   36  mysql -u iti -h 127.0.0.1 -p
+
+   38  history
+
+################################################################################################################################
+
+**Adding user in mysql:
+mysql -u root -p 
+create user 'ahmed'@'%' identified by 'ahmed';
+grant all privileges on *.* to 'ahmed'@'%' with grant option;
+flush privileges;
+
+
+
+scp -i "n-virginia.pem" -r ec2-user@ec2-54-91-180-95.compute-1.amazonaws.com:/var/www/html .
+scp -i "n-virginia.pem" -r ec2-user@ec2-54-91-180-95.compute-1.amazonaws.com:/var/www/html .
+scp -i "n-virginia.pem" -r ec2-user@ec2-54-91-180-95.compute-1.amazonaws.com:/var/www/html .
+
+
+
+create table userinfo (fname varchar(15), lname varchar(15), email varchar(30)  , constraint c1 primary key (fname));
+

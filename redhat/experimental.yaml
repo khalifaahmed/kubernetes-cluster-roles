@@ -1,0 +1,189 @@
+- name: play-1 
+  #hosts: my_ec2
+  hosts: all
+  become: yes
+  # vars:
+  #   ahmed_password:  "ahmed"
+  #   ahmed2_password: "ahmed2"
+  tasks: 
+  - name: installing  packages
+    vars:
+      ansible_python_interpreter: /usr/bin/python3
+    yum:
+      name:
+      # - python
+      # - python3
+      # - pip
+      - podman-docker                        #- podman   #- docker-compose
+      - yum-utils
+      # - httpd
+      - vim
+      # - net-tools
+      # - mysql                                #- mysql-server
+      # - firewalld                            #- firewalld-1.0.0-4.el9.noarch
+      - bash-completion.noarch
+      # - lvm2-9:2.03.17-7.el9.x86_64
+      update_cache: yes
+      state: present
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl    
+  # - name: Install the docker remote repo
+  #   ansible.builtin.dnf:
+  #     name: 'https://download.docker.com/linux/rhel/docker-ce.repo'
+  #     state: present
+  #     disable_gpg_check: true
+  # - name: start & enable httpd
+  #   systemd: 
+  #     name: httpd
+  #     state: started
+  #     enabled: true   
+  # - name: start & enable firewalld
+  #   systemd: 
+  #     name: firewalld
+  #     state: started
+  #     enabled: true         
+  # - name: Install the php remote repo
+  #   ansible.builtin.dnf:
+  #     name: 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm'
+  #     state: present
+  #     disable_gpg_check: true
+  # - name: Install the nginx rpm from a remote repo
+  #   ansible.builtin.dnf:
+  #     name: 'https://rpms.remirepo.net/enterprise/remi-release-8.rpm'
+  #     state: present 
+  #     disable_gpg_check: true
+  # - name : enable dnf module enable php
+  #   command: dnf module -y enable php
+  # - name: Install the latest version of Apache from the php remote repo
+  #   ansible.builtin.dnf:
+  #     name:
+  #     - php 
+  #     - php-cli 
+  #     - php-common
+  #     - php-mysqlnd
+  # - name: Copy html files
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/general-project-beta/redhat/html_files/
+  #     dest: /var/www/html/
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: http    
+  # - name: make http work on port 82 in the conf file 
+  #   lineinfile: 
+  #     path: /etc/httpd/conf/httpd.conf
+  #     regexp: '^Listen 80'
+  #     line: Listen 82
+  # - name: Allow Apache to listen on tcp port 8888
+  #   community.general.seport:
+  #     ports: 81-89,8888
+  #     proto: tcp
+  #     setype: http_port_t
+  #     state: present
+  # - name: permit traffic in the default zone for https service
+  #   ansible.posix.firewalld:
+  #     service: http
+  #     permanent: true
+  #     state: enabled
+  # - name: allow traffic on port 82 from firewall
+  #   ansible.posix.firewalld:
+  #     port: 82/tcp
+  #     permanent: true
+  #     state: enabled
+  # - name: add eth0 to public zone
+  #   ansible.posix.firewalld:
+  #     zone: public
+  #     interface: eth0
+  #     permanent: true
+  #     state: enabled    
+  # - name: Put SELinux in enforcing mode
+  #   ansible.posix.selinux:
+  #     policy: targeted
+  #     state: enforcing
+  # - name: Reload service httpd
+  #   ansible.builtin.systemd:
+  #     name: httpd.service
+  #     state: restarted
+  # - name: Reload service firewalld
+  #   ansible.builtin.systemd:
+  #     name: firewalld.service
+  #     state: restarted          
+  - name: start & enable podman.service 
+    systemd: 
+      name: podman 
+      state: started
+      enabled: true        
+  - name: Install docker-compose
+    get_url: 
+      #url: https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Linux-{{lookup('pipe', 'uname -m')}}
+      url: https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-linux-x86_64 
+      dest: /usr/local/bin/docker-compose
+      mode: +x
+  - name: Copy docker compose file 
+    copy:
+      src: /home/ahmed/Desktop/terraform/general-project-beta/ec2-docker/docker-compose.yaml
+      dest: /home/ec2-user/docker-compose.yaml
+  - name: Ensure docker group exits
+    group:
+      name: docker
+      state: present   
+  - name: Adding admin group
+    group:
+      name: admin
+      state: present        
+  - name: Add the user 'ec2-user' to the docker group appendingly
+    ansible.builtin.user:
+      name: ec2-user
+      groups: docker
+      append: yes      
+  - name: Grant user ec2-user use docker 
+    ansible.posix.acl:
+      path: /var/run/podman/
+      entity: ec2-user
+      etype: user
+      permissions: rwx
+      state: present
+      # default: true
+      recursive: true
+      follow: true
+    register: acl_info
+  - name: output the register variable value
+    debug:
+      msg: 
+      - "the acl_info register =  {{acl_info}} "
+  # - name: Grant user ec2-user use docker another way
+  #   file:
+  #     path: /var/run/podman/podman.sock
+  #     state: file       
+  #     mode: '0777'
+  #     #mode: u+rw,g-wx,o-rwx
+  - name: Add the user 'ahmed'
+    vars: 
+      ahmed_password: ahmed
+    ansible.builtin.user:
+      name: ahmed
+      shell: /bin/bash
+      group: admin
+      groups: docker,wheel
+      append: yes
+      password: "{{ ahmed_password | password_hash('sha512') }}"
+      create_home: true
+  - name: Add the user 'ahmed2'
+    vars: 
+      ahmed2_password: ahmed2
+    ansible.builtin.user:
+      name: ahmed2
+      shell: /bin/bash
+      group: admin
+      groups: docker,wheel
+      append: yes
+      password: "{{ ahmed2_password | password_hash('sha512') }}"
+      create_home: true      
+  - name: Reconnect to server session
+    meta: reset_connection
+         
+# setenforc 0
+# Modify the database address in addcontact.php man 
