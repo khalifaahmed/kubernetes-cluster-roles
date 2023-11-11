@@ -72,7 +72,7 @@ resource "aws_instance" "worker_nodes" {
     volume_size = 10
   }
   credit_specification {
-    cpu_credits = "standard" #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
+    cpu_credits = "standard"  #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
   }
   tags = {
     "Name" = "worker-node-${count.index}"
@@ -85,5 +85,8 @@ resource "null_resource" "kube_cluster" {
     command = "export master_public_ip=${aws_instance.master_nodes[0].public_ip} master_private_ip=${aws_instance.master_nodes[0].private_ip} worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip} worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}; envsubst '$master_public_ip,$master_private_ip,$worker1_public_ip,$worker1_private_ip,$worker2_public_ip,$worker2_private_ip' < ./kubernetes-2/master-node-vars > ./kubernetes-2/master-node.yaml; sleep 125; ansible-playbook --inventory ${aws_instance.master_nodes[0].public_ip},${aws_instance.worker_nodes[0].public_ip},${aws_instance.worker_nodes[1].public_ip} --user ubuntu  ./kubernetes-2/master-node.yaml"
   }
   depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+  lifecycle {
+    replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+  }  
 }
 

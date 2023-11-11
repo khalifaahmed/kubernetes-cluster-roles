@@ -1,205 +1,4 @@
-# ---
-# - name: play-1 master node
-#   hosts: all  #my_ec2
-#   become: yes  
-#   tasks:
-#   - name: play-1update apt repo & cache
-#     apt: update_cache=yes force_apt_get=yes cache_valid_time=0 upgrade=dist
-#   - name: Install a list of packages
-#     ansible.builtin.apt:
-#       pkg:
-#       - apt-transport-https
-#       - ca-certificates 
-#       - curl
-#   - name: making some alias
-#     ansible.builtin.blockinfile:
-#       path: /etc/bash.bashrc
-#       block: |
-#         alias c=clear
-#         alias k=kubectl    
-#   - name: Set a hostname
-#     ansible.builtin.hostname:
-#       name: master
-#   - name: making some alias
-#     ansible.builtin.blockinfile:
-#       path: /etc/hosts
-#       block: |
-#         127.0.0.1    master
-# #        worker1      ${worker1}
-# #        worker2      ${worker2}
-#   - name: disable swap
-#     ansible.builtin.command: 
-#       cmd:  swapoff -a
-#   # - name: create directry /etc/modules-load.d/k8s.conf if not exists
-#   #   ansible.builtin.file:
-#   #     path: /etc/modules-load.d/k8s.conf
-#   #     state: file
-#   - name: configurer k8s prerequists
-#     ansible.builtin.blockinfile:
-#       path: /etc/modules-load.d/k8s.conf
-#       block: |
-#         overlay
-#         br_netfilter
-#       create: true  
-#   - name: k8s prerequists continue
-#     ansible.builtin.command: 
-#       cmd: modprobe overlay ; modprobe br_netfilter
-#   - name: configure file /etc/sysctl.d/k8s.conf
-#     ansible.builtin.blockinfile:
-#       path: /etc/sysctl.d/k8s.conf
-#       create: true
-#       block: |
-#         net.bridge.bridge-nf-call-iptables  = 1
-#         net.bridge.bridge-nf-call-ip6tables = 1
-#         net.ipv4.ip_forward                 = 1
-#   # - name: configure file /etc/sysctl.d/k8s.conf
-#   #   ansible.builtin.blockinfile:
-#   #     path: /proc/sys/net/bridge/bridge-nf-call-iptables
-#   #     block: |
-#   #       net.bridge.bridge-nf-call-iptables  = 1
-#   #       net.bridge.bridge-nf-call-ip6tables = 1
-#   #       net.ipv4.ip_forward                 = 1
-#   #     create: true      
-#   # - ansible.posix.sysctl:
-#   #     name: net.bridge.bridge-nf-call-iptables
-#   #     value: '1'
-#   #     sysctl_set: true
-#   #     state: present
-#   #     reload: true
-#   # - ansible.posix.sysctl:
-#   #     name: net.bridge.bridge-nf-call-ip6tables
-#   #     value: '1'
-#   #     sysctl_set: true
-#   #     state: present
-#   #     reload: true
-#   # - ansible.posix.sysctl:
-#   #     name: net.ipv4.ip_forward
-#   #     value: '1'
-#   #     sysctl_set: true
-#   #     state: present
-#   #     reload: true              
-#   - name: reload sysctl
-#     ansible.builtin.command: 
-#       cmd:  sysctl --system
-# # [ERROR FileContent--proc-sys-net-bridge-bridge-nf-call-iptables]: /proc/sys/net/bridge/bridge-nf-call-iptables does not exist      
-#   # - name: reload sysctl
-#   #   ansible.posix.sysctl:
-#   #     # name: net.ipv4.ip_forward
-#   #     # value: '1'
-#   #     sysctl_set: true
-#   #     state: present
-#   #     reload: true
-#   - name: Install containerd
-#     ansible.builtin.apt:
-#       pkg:
-#       - containerd
-#       update_cache: yes
-#   - name: Create /etc/containerd directory if it does not exist
-#     ansible.builtin.file:
-#       path: /etc/containerd
-#       state: directory
-#       # mode: '0755'
-#   - name: configure containerd config file
-#     ansible.builtin.command: 
-#       cmd: containerd config default > /etc/containerd/config.toml
-#   - name: start & enable containerd.service 
-#     systemd: 
-#       name: containerd
-#       state: started
-#       enabled: true
-
-#   # - name: add k8s gpg key
-#   #   ansible.builtin.command: 
-#   #     cmd: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key > key
-#   # - name: add k8s gpg key
-#   #   ansible.builtin.command: 
-#   #     cmd: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg key
-#   # - name: Use 'argv' to send a command as a list - leave 'command' empty
-#   #   ansible.builtin.command:
-#   #     argv:
-#   #     - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg  
-#   - name: Check if file /etc/apt/keyrings/kubernetes-apt-keyring.gpg exists
-#     stat:
-#       path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg  
-#     register: stat_result
-#   - debug: msg={{stat_result}}     
-#   - name: Execute the command in remote shell; stdout goes to the specified file on the remote
-#     ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-#     when: not stat_result.stat.exists
-#   # - name: add k8s repo
-#   #   ansible.builtin.command: 
-#   #     cmd: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
-#   - name: configure file /etc/apt/sources.list.d/kubernetes.list
-#     ansible.builtin.blockinfile:
-#       path: /etc/apt/sources.list.d/kubernetes.list
-#       block: |
-#         deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
-#       create: true
-
-#   - name: update apt repo & cache
-#     apt: 
-#       update_cache: yes
-#   - name: Install kubeadm
-#     ansible.builtin.apt:
-#       update_cache: yes
-#       pkg:
-#       - kubelet=1.28.2-1.1 
-#       - kubeadm=1.28.2-1.1 
-#       - kubectl=1.28.2-1.1
-#   - name: kubeadm
-#     ansible.builtin.command: 
-#       cmd: kubeadm init
-#   - name: Create /home/ubuntu/.kube directory if it does not exist
-#     ansible.builtin.file:
-#       path: /home/ubuntu/.kube
-#       state: directory
-#   - name: Copy install-containerd.sh file 
-#     copy:
-#       src: /etc/kubernetes/admin.conf 
-#       dest: /home/ubuntu/.kube/config
-#       remote_src: true
-#   - name: Recursively change ownership of a directory
-#     ansible.builtin.file:
-#       path: /home/ubuntu/.kube/config
-#       state: file
-#       owner: ubuntu
-#       group: ubuntu
-
-
-
-
-# - name: instaall kubeadm 
-#   hosts: all    
-#   tasks:
-#   - name: Copy install-containerd.sh file 
-#     copy:
-#       src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
-#       dest: /home/ubuntu/install-containerd.sh
-#       mode: +x
-#   - name: Copy install-kubeadm file
-#     copy:
-#       src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
-#       dest: /home/ubuntu/install-kubeadm.sh
-#       mode: +x
-#   - name: run scripts
-#     ansible.builtin.command: 
-#       cmd:  /home/ubuntu/install-containerd.sh
-#   - name: run scripts
-#     ansible.builtin.command: 
-#       cmd:  /home/ubuntu/install-kubeadm.sh
-#   - name: run scripts
-#     ansible.builtin.command: 
-#       cmd: kubeadm token create --print-join-command
-#     register: kubeadm_command_output
-#   - name: output the register variable value
-#     debug:
-#       msg: 
-#       - "the kubeadm_command_output.stdout register =  {{kubeadm_command_output.stdout}} "      
-      
-
-
-
-
+---
 - name: master instaall kubeadm 
   hosts: ${master_public_ip}
   become: yes  
@@ -224,24 +23,119 @@
         ${worker2_private_ip}    worker2
 
 - name: master_instaall_kubeadm 
-  hosts: ${master_public_ip}    
+  hosts: ${master_public_ip}
+  become: yes
+  become_user: root
+  gather_facts: no   
   tasks:
-  - name: Copy install-containerd.sh file 
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
-      dest: /home/ubuntu/install-containerd.sh
-      mode: +x
-  - name: Copy install-kubeadm.sh file
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
-      dest: /home/ubuntu/install-kubeadm.sh
-      mode: +x
-  - name: run script install-containerd.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-containerd.sh
-  - name: run script install-kubeadm.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-kubeadm.sh    
+  # - name: Copy install-containerd.sh file 
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
+  #     dest: /home/ubuntu/install-containerd.sh
+  #     mode: +x
+  # - name: Copy install-kubeadm.sh file
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
+  #     dest: /home/ubuntu/install-kubeadm.sh
+  #     mode: +x
+  # - name: run script install-containerd.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-containerd.sh
+  # - name: run script install-kubeadm.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-kubeadm.sh    
+  - name: apt repo & cache
+    apt: update_cache=yes force_apt_get=yes cache_valid_time=0 upgrade=dist
+  - name: Install a list of packages
+    ansible.builtin.apt:
+      pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+  - name: disable swap
+    ansible.builtin.command:
+      cmd:  swapoff -a
+  - name: configurer k8s prerequists
+    ansible.builtin.blockinfile:
+      path: /etc/modules-load.d/k8s.conf
+      block: |
+        overlay
+        br_netfilter
+      create: true
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe overlay
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe br_netfilter        
+  - name: configure file /etc/sysctl.d/k8s.conf
+    ansible.builtin.blockinfile:
+      path: /etc/sysctl.d/k8s.conf
+      block: |
+        net.bridge.bridge-nf-call-iptables  = 1
+        net.bridge.bridge-nf-call-ip6tables = 1
+        net.ipv4.ip_forward                 = 1
+      create: true
+      marker: no
+  - name: reload sysctl
+    ansible.builtin.command:
+      cmd:  sysctl --system
+  - name: Install containerd
+    ansible.builtin.apt:
+      pkg:
+      - containerd
+      update_cache: yes
+  - name: start & enable containerd.service
+    systemd:
+      name: containerd
+      state: started
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: containerd config default > /etc/containerd/config.toml
+    register: cmd_result
+  - debug:
+      msg: "this is the out of cmd_result register: {{ cmd_result }}"
+  - name: configure file /etc/containerd/config.toml
+    ansible.builtin.blockinfile:
+      path: /etc/containerd/config.toml
+      block: |
+        {{ cmd_result.stdout }}
+      create: true      
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+  - name: restart containerd.service
+    systemd:
+      name: containerd
+      state: restarted      
+  - name: Check if file /etc/apt/keyrings/kubernetes-apt-keyring.gpg exists
+    stat:
+      path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    register: stat_result
+  - debug: msg={{stat_result}}
+  - name: Execute the command in remote shell; stdout goes to the specified file on the remote
+    ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    when: not stat_result.stat.exists
+  # - name: add k8s repo
+  #   ansible.builtin.command:
+  #     cmd: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+  - name: configure file /etc/apt/sources.list.d/kubernetes.list
+    ansible.builtin.blockinfile:
+      path: /etc/apt/sources.list.d/kubernetes.list
+      block: |
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
+      create: true
+  - name: update apt repo & cache
+    apt:
+      update_cache: yes
+  - name: Install kubeadm
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg:
+        - kubelet=1.28.2-1.1
+        - kubeadm=1.28.2-1.1
+        - kubectl=1.28.2-1.1
+
   - name: kubeadm init
     become: yes
     become_user: root
@@ -259,8 +153,6 @@
       dest: /home/ubuntu/.kube/config
       remote_src: true
   - name: change ownership of kubeconfig file
-    become: yes
-    become_user: root    
     ansible.builtin.file:      
       path: /home/ubuntu/.kube/config
       state: file
@@ -280,7 +172,11 @@
   - name: output the register variable value by play name
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output.stdout']
-
+  - name: generate token for worker1 to join
+    become: yes
+    become_user: ubuntu
+    ansible.builtin.command: 
+      cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
 
 
 - name: worker1 instaall kubeadm 
@@ -308,23 +204,117 @@
 
 - name: instaall kubeadm 
   hosts: ${worker1_public_ip}    
+  become: yes
+  become_user: root      
   tasks:
-  - name: Copy install-containerd.sh file 
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
-      dest: /home/ubuntu/install-containerd.sh
-      mode: +x
-  - name: Copy install-kubeadm.sh file
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
-      dest: /home/ubuntu/install-kubeadm.sh
-      mode: +x
-  - name: run script install-containerd.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-containerd.sh
-  - name: run script install-kubeadm.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-kubeadm.sh
+  # - name: Copy install-containerd.sh file 
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
+  #     dest: /home/ubuntu/install-containerd.sh
+  #     mode: +x
+  # - name: Copy install-kubeadm.sh file
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
+  #     dest: /home/ubuntu/install-kubeadm.sh
+  #     mode: +x
+  # - name: run script install-containerd.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-containerd.sh
+  # - name: run script install-kubeadm.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-kubeadm.sh
+  - name: play-1update apt repo & cache
+    apt: update_cache=yes force_apt_get=yes cache_valid_time=0 upgrade=dist
+  - name: Install a list of packages
+    ansible.builtin.apt:
+      pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+  - name: disable swap
+    ansible.builtin.command:
+      cmd:  swapoff -a
+  - name: configurer k8s prerequists
+    ansible.builtin.blockinfile:
+      path: /etc/modules-load.d/k8s.conf
+      block: |
+        overlay
+        br_netfilter
+      create: true
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe overlay
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe br_netfilter        
+  - name: configure file /etc/sysctl.d/k8s.conf
+    ansible.builtin.blockinfile:
+      path: /etc/sysctl.d/k8s.conf
+      block: |
+        net.bridge.bridge-nf-call-iptables  = 1
+        net.bridge.bridge-nf-call-ip6tables = 1
+        net.ipv4.ip_forward                 = 1
+      create: true
+      marker: no
+  - name: reload sysctl
+    ansible.builtin.command:
+      cmd:  sysctl --system
+  - name: Install containerd
+    ansible.builtin.apt:
+      pkg:
+      - containerd
+      update_cache: yes
+  - name: start & enable containerd.service
+    systemd:
+      name: containerd
+      state: started
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: containerd config default > /etc/containerd/config.toml
+    register: cmd_result
+  - debug:
+      msg: "this is the out of cmd_result register: {{ cmd_result }}"
+  - name: configure file /etc/containerd/config.toml
+    ansible.builtin.blockinfile:
+      path: /etc/containerd/config.toml
+      block: |
+        {{ cmd_result.stdout }}
+      create: true      
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+  - name: restart containerd.service
+    systemd:
+      name: containerd
+      state: restarted      
+  - name: Check if file /etc/apt/keyrings/kubernetes-apt-keyring.gpg exists
+    stat:
+      path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    register: stat_result
+  - debug: msg={{stat_result}}
+  - name: Execute the command in remote shell; stdout goes to the specified file on the remote
+    ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    when: not stat_result.stat.exists
+  # - name: add k8s repo
+  #   ansible.builtin.command:
+  #     cmd: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+  - name: configure file /etc/apt/sources.list.d/kubernetes.list
+    ansible.builtin.blockinfile:
+      path: /etc/apt/sources.list.d/kubernetes.list
+      block: |
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
+      create: true
+  - name: update apt repo & cache
+    apt:
+      update_cache: yes
+  - name: Install kubeadm
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg:
+        - kubelet=1.28.2-1.1
+        - kubeadm=1.28.2-1.1
+        - kubectl=1.28.2-1.1
+
   - name: output the register variable value
     debug:
       var:  hostvars['${master_public_ip}']['kubeadm_command_output']['stdout']      
@@ -332,8 +322,6 @@
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
-    become: yes
-    become_user: root      
     ansible.builtin.command: 
       cmd: "{{ hostvars['${master_public_ip}']['kubeadm_command_output']['stdout'] }}"      
                         
@@ -365,23 +353,117 @@
 
 - name: instaall kubeadm 
   hosts: ${worker2_public_ip}    
+  become: yes
+  become_user: root      
   tasks:
-  - name: Copy install-containerd.sh file 
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
-      dest: /home/ubuntu/install-containerd.sh
-      mode: +x
-  - name: Copy install-kubeadm.sh file
-    copy:
-      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
-      dest: /home/ubuntu/install-kubeadm.sh
-      mode: +x
-  - name: run script install-containerd.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-containerd.sh
-  - name: run script install-kubeadm.sh
-    ansible.builtin.command: 
-      cmd:  /home/ubuntu/install-kubeadm.sh
+  # - name: Copy install-containerd.sh file 
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
+  #     dest: /home/ubuntu/install-containerd.sh
+  #     mode: +x
+  # - name: Copy install-kubeadm.sh file
+  #   copy:
+  #     src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
+  #     dest: /home/ubuntu/install-kubeadm.sh
+  #     mode: +x
+  # - name: run script install-containerd.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-containerd.sh
+  # - name: run script install-kubeadm.sh
+  #   ansible.builtin.command: 
+  #     cmd:  /home/ubuntu/install-kubeadm.sh
+  - name: play-1update apt repo & cache
+    apt: update_cache=yes force_apt_get=yes cache_valid_time=0 upgrade=dist
+  - name: Install a list of packages
+    ansible.builtin.apt:
+      pkg:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+  - name: disable swap
+    ansible.builtin.command:
+      cmd:  swapoff -a
+  - name: configurer k8s prerequists
+    ansible.builtin.blockinfile:
+      path: /etc/modules-load.d/k8s.conf
+      block: |
+        overlay
+        br_netfilter
+      create: true
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe overlay
+  - name: k8s prerequists continue
+    ansible.builtin.command:
+      cmd: sudo modprobe br_netfilter        
+  - name: configure file /etc/sysctl.d/k8s.conf
+    ansible.builtin.blockinfile:
+      path: /etc/sysctl.d/k8s.conf
+      block: |
+        net.bridge.bridge-nf-call-iptables  = 1
+        net.bridge.bridge-nf-call-ip6tables = 1
+        net.ipv4.ip_forward                 = 1
+      create: true
+      marker: no
+  - name: reload sysctl
+    ansible.builtin.command:
+      cmd:  sysctl --system
+  - name: Install containerd
+    ansible.builtin.apt:
+      pkg:
+      - containerd
+      update_cache: yes
+  - name: start & enable containerd.service
+    systemd:
+      name: containerd
+      state: started
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: containerd config default > /etc/containerd/config.toml
+    register: cmd_result
+  - debug:
+      msg: "this is the out of cmd_result register: {{ cmd_result }}"
+  - name: configure file /etc/containerd/config.toml
+    ansible.builtin.blockinfile:
+      path: /etc/containerd/config.toml
+      block: |
+        {{ cmd_result.stdout }}
+      create: true      
+  - name: configure containerd config file
+    ansible.builtin.command:
+      cmd: sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+  - name: restart containerd.service
+    systemd:
+      name: containerd
+      state: restarted      
+  - name: Check if file /etc/apt/keyrings/kubernetes-apt-keyring.gpg exists
+    stat:
+      path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    register: stat_result
+  - debug: msg={{stat_result}}
+  - name: Execute the command in remote shell; stdout goes to the specified file on the remote
+    ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    when: not stat_result.stat.exists
+  # - name: add k8s repo
+  #   ansible.builtin.command:
+  #     cmd: echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+  - name: configure file /etc/apt/sources.list.d/kubernetes.list
+    ansible.builtin.blockinfile:
+      path: /etc/apt/sources.list.d/kubernetes.list
+      block: |
+        deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
+      create: true
+  - name: update apt repo & cache
+    apt:
+      update_cache: yes
+  - name: Install kubeadm
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg:
+        - kubelet=1.28.2-1.1
+        - kubeadm=1.28.2-1.1
+        - kubectl=1.28.2-1.1
+
   - name: output the register variable value
     debug:
       var:  hostvars['${master_public_ip}']['kubeadm_command_output']['stdout']      
@@ -389,11 +471,9 @@
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
-    become: yes
-    become_user: root      
     ansible.builtin.command: 
       cmd: "{{ hostvars['${master_public_ip}']['kubeadm_command_output']['stdout'] }}"      
-
+                        
 
   # - name: output the register variable value
   #   debug:
