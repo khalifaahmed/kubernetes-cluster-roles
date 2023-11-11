@@ -201,7 +201,7 @@
 
 
 - name: master instaall kubeadm 
-  hosts: 3.133.110.6
+  hosts: ${master_public_ip}
   become: yes  
   tasks:
   - name: play-1-task-1 update apt repo & cache
@@ -219,11 +219,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.79     master
-        10.0.1.48    worker1
+        ${master_private_ip}     master
+        ${worker1_private_ip}    worker1
+        ${worker2_private_ip}    worker2
 
 - name: master_instaall_kubeadm 
-  hosts: 3.133.110.6    
+  hosts: ${master_public_ip}    
   tasks:
   - name: Copy install-containerd.sh file 
     copy:
@@ -275,14 +276,15 @@
       - "the kubeadm_command_output.stdout register =  {{kubeadm_command_output.stdout}}"
   - name: output the register variable value by hosts
     debug:
-      var:  hostvars['3.133.110.6']['kubeadm_command_output.stdout']
+      var:  hostvars['${master_public_ip}.kubeadm_command_output.stdout']
   - name: output the register variable value by play name
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output.stdout']
 
 
+
 - name: worker1 instaall kubeadm 
-  hosts: 18.225.238.195
+  hosts: ${worker1_public_ip}
   become: yes  
   tasks:
   - name: play-1-task-1 update apt repo & cache
@@ -300,10 +302,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.79     master
-        10.0.1.48    worker1
+        ${master_private_ip}     master
+        ${worker1_private_ip}    worker1
+        ${worker2_private_ip}    worker2
+
 - name: instaall kubeadm 
-  hosts: 18.225.238.195    
+  hosts: ${worker1_public_ip}    
   tasks:
   - name: Copy install-containerd.sh file 
     copy:
@@ -323,7 +327,7 @@
       cmd:  /home/ubuntu/install-kubeadm.sh
   - name: output the register variable value
     debug:
-      var:  hostvars['3.133.110.6']['kubeadm_command_output']['stdout']      
+      var:  hostvars['${master_public_ip}']['kubeadm_command_output']['stdout']      
   - name: output the register variable value
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
@@ -331,8 +335,65 @@
     become: yes
     become_user: root      
     ansible.builtin.command: 
-      cmd: "{{ hostvars['3.133.110.6']['kubeadm_command_output']['stdout'] }}"      
+      cmd: "{{ hostvars['${master_public_ip}']['kubeadm_command_output']['stdout'] }}"      
                         
+
+
+
+- name: worker2 instaall kubeadm 
+  hosts: ${worker2_public_ip}
+  become: yes  
+  tasks:
+  - name: update apt repo & cache
+    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bash.bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl    
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: worker2
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/hosts
+      block: |
+        ${master_private_ip}     master
+        ${worker1_private_ip}    worker1
+        ${worker2_private_ip}    worker2
+
+- name: instaall kubeadm 
+  hosts: ${worker2_public_ip}    
+  tasks:
+  - name: Copy install-containerd.sh file 
+    copy:
+      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-containerd.sh
+      dest: /home/ubuntu/install-containerd.sh
+      mode: +x
+  - name: Copy install-kubeadm.sh file
+    copy:
+      src: /home/ahmed/Desktop/terraform/kubernetes-cluster/kubernetes/install-kubeadm.sh
+      dest: /home/ubuntu/install-kubeadm.sh
+      mode: +x
+  - name: run script install-containerd.sh
+    ansible.builtin.command: 
+      cmd:  /home/ubuntu/install-containerd.sh
+  - name: run script install-kubeadm.sh
+    ansible.builtin.command: 
+      cmd:  /home/ubuntu/install-kubeadm.sh
+  - name: output the register variable value
+    debug:
+      var:  hostvars['${master_public_ip}']['kubeadm_command_output']['stdout']      
+  - name: output the register variable value
+    debug:
+      var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
+  - name: kubeadm join 
+    become: yes
+    become_user: root      
+    ansible.builtin.command: 
+      cmd: "{{ hostvars['${master_public_ip}']['kubeadm_command_output']['stdout'] }}"      
+
 
   # - name: output the register variable value
   #   debug:
