@@ -1,0 +1,4 @@
+Host master
+    HostName 3.134.103.175
+    User ubuntu
+    port 22

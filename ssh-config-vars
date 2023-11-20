@@ -1,0 +1,5 @@
+Host master
+    HostName ${master_public_ip}
+    User ubuntu
+    IdentityFile /home/ahmed/Desktop/terraform/kubernetes_cluster/us-east-2-terraform-key.pem
+    port 22

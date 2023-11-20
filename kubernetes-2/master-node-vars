@@ -789,8 +789,15 @@
       dest: /home/ubuntu/myvalues.yaml
   - name: Deploy ingress-nginx repo    
     ansible.builtin.command:
-      cmd: helm install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
-   
+      cmd: helm upgrade --install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
+  - name: copy myapp yaml file
+    copy:
+      src: myapp.yaml
+      dest: /home/ubuntu/myapp.yaml
+  - name: Deploy ingress-nginx repo    
+    ansible.builtin.command:
+      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
+
 
   # - name: output the register variable value
   #   debug:

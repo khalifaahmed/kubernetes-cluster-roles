@@ -1,6 +1,6 @@
 ---
 - name: master install kubeadm 
-  hosts: 3.135.247.159
+  hosts: 3.134.103.175
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -18,12 +18,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.139     master
-        10.0.1.172    worker1
-        10.0.1.156    worker2
+        10.0.1.140     master
+        10.0.1.227    worker1
+        10.0.1.30    worker2
 
 - name: master_install_kubeadm 
-  hosts: 3.135.247.159
+  hosts: 3.134.103.175
   become: yes
   become_user: root
   gather_facts: no   
@@ -247,7 +247,7 @@
   #   debug: msg="the kubeadm_command_output.stdout register =  {{kubeadm_command_output.stdout}}"
   - name: output the register variable value by hosts
     debug:
-      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']
+      var:  hostvars['3.134.103.175']['kubeadm_command_output']['stdout']
   - name: deploy weave cni
     become: yes
     become_user: ubuntu
@@ -320,7 +320,7 @@
 
 
 - name: worker1 instaall kubeadm 
-  hosts: 3.147.45.134
+  hosts: 3.16.154.188
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -338,12 +338,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.139     master
-        10.0.1.172    worker1
-        10.0.1.156    worker2
+        10.0.1.140     master
+        10.0.1.227    worker1
+        10.0.1.30    worker2
 
 - name: instaall kubeadm 
-  hosts: 3.147.45.134    
+  hosts: 3.16.154.188    
   become: yes
   become_user: root      
   tasks:
@@ -593,20 +593,20 @@
 
   - name: output the register variable value
     debug:
-      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']      
+      var:  hostvars['3.134.103.175']['kubeadm_command_output']['stdout']      
   - name: output the register variable value
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
     ansible.builtin.command: 
-      cmd: "{{hostvars['3.135.247.159']['kubeadm_command_output']['stdout']}}"      
+      cmd: "{{hostvars['3.134.103.175']['kubeadm_command_output']['stdout']}}"      
     when: 
     - not kube_join_stat.stat.exists                       
-    # - not hostvars['3.135.247.159']['kube_init_stat']['stat']['exists']
+    # - not hostvars['3.134.103.175']['kube_init_stat']['stat']['exists']
 
 
 - name: worker2 instaall kubeadm 
-  hosts: 3.15.137.48
+  hosts: 3.145.23.84
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -624,12 +624,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.139     master
-        10.0.1.172    worker1
-        10.0.1.156    worker2
+        10.0.1.140     master
+        10.0.1.227    worker1
+        10.0.1.30    worker2
 
 - name: instaall kubeadm 
-  hosts: 3.15.137.48    
+  hosts: 3.145.23.84    
   become: yes
   become_user: root      
   tasks:
@@ -767,19 +767,19 @@
 
   - name: output the register variable value
     debug:
-      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']      
+      var:  hostvars['3.134.103.175']['kubeadm_command_output']['stdout']      
   - name: output the register variable value
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
     ansible.builtin.command: 
-      cmd: "{{hostvars['3.135.247.159']['kubeadm_command_output']['stdout']}}"      
+      cmd: "{{hostvars['3.134.103.175']['kubeadm_command_output']['stdout']}}"      
     when: k8s_prerequists_state.changed == true                        
 
 
 
 - name: master Deploy ingress nginx 
-  hosts: 3.135.247.159
+  hosts: 3.134.103.175
   become: yes  
   become_user: ubuntu
   tasks:
@@ -789,8 +789,15 @@
       dest: /home/ubuntu/myvalues.yaml
   - name: Deploy ingress-nginx repo    
     ansible.builtin.command:
-      cmd: helm install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
-   
+      cmd: helm upgrade --install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
+  - name: copy myapp yaml file
+    copy:
+      src: myapp.yaml
+      dest: /home/ubuntu/myapp.yaml
+  - name: Deploy ingress-nginx repo    
+    ansible.builtin.command:
+      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
+
 
   # - name: output the register variable value
   #   debug:
