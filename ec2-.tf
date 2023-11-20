@@ -90,3 +90,12 @@ resource "null_resource" "kube_cluster" {
   }  
 }
 
+#resource "null_resource" "ssh_config" {
+#  provisioner "local-exec" {
+#    command = "export master_public_ip=${aws_instance.master_nodes[0].public_ip}  worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip} ; envsubst '$master_public_ip,$worker1_public_ip,$worker2_public_ip' < ./ssh-config-vars > ./ssh-config-vars ; cp ssh-config-vars ~/.ssh/ssh.config ; systemctl restart sshd.service"
+#  }
+#  depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+#  lifecycle {
+#    replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+#  }    
+#}

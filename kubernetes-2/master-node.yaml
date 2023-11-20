@@ -1,6 +1,6 @@
 ---
 - name: master install kubeadm 
-  hosts: 18.116.12.238
+  hosts: 3.135.247.159
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -18,12 +18,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.21     master
-        10.0.1.82    worker1
-        10.0.1.4    worker2
+        10.0.1.139     master
+        10.0.1.172    worker1
+        10.0.1.156    worker2
 
 - name: master_install_kubeadm 
-  hosts: 18.116.12.238
+  hosts: 3.135.247.159
   become: yes
   become_user: root
   gather_facts: no   
@@ -144,7 +144,7 @@
   #   ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
   #   when: k8s_prerequists_state.changed == true  
     
-  # - name: configure containerd config file
+  # - name: configure Cgroup in containerd config file 
   #   ansible.builtin.command:
   #     cmd: sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
   - name: configure Cgroup in containerd config file 
@@ -166,7 +166,7 @@
   #   register: stat_result
   # - debug:
   #     var: stat_result.stat.exists
-  # # there is no redirection man the "shell" module contain redirectoin man  
+  # ############### there is no redirection man the "shell" module contain redirectoin man ################################## 
   # - name: Add k8s key
   #   ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   #   when: not stat_result.stat.exists
@@ -194,7 +194,6 @@
       state: present
       update_cache: true
 
-
   - name: Check if file /etc/kubernetes/admin.conf exists
     stat:
       path: /etc/kubernetes/admin.conf 
@@ -207,12 +206,13 @@
   #     update_cache: yes
   - name: Install kubeadm
     ansible.builtin.apt:
-      update_cache: yes
+      # update_cache: yes
       pkg:
         - kubelet=1.28.2-1.1
         - kubeadm=1.28.2-1.1
         - kubectl=1.28.2-1.1
       allow_downgrade: true
+    when: not kube_init_stat.stat.exists  
 
   - name: kubeadm init
     become: yes
@@ -237,24 +237,77 @@
       path: /home/ubuntu/.kube/config
       state: file
       owner: ubuntu
-      group: ubuntu            
-  - name: generate token for worker1 to join
+      group: ubuntu         
+      mode: "0600"   
+  - name: generate token for worker nodes to join
     ansible.builtin.command: 
       cmd: kubeadm token create --print-join-command
     register: kubeadm_command_output
   # - name: output the register variable value
-  #   debug:
-  #     msg: 
-  #     - "the kubeadm_command_output.stdout register =  {{kubeadm_command_output.stdout}}"
+  #   debug: msg="the kubeadm_command_output.stdout register =  {{kubeadm_command_output.stdout}}"
   - name: output the register variable value by hosts
     debug:
-      var:  hostvars['18.116.12.238']['kubeadm_command_output']['stdout']
+      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']
   - name: deploy weave cni
     become: yes
     become_user: ubuntu
     ansible.builtin.command: 
       cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
     changed_when: false
+
+  # - name: Add an helm Apt signing key to a specific keyring file
+  #   ansible.builtin.apt_key:
+  #     url: https://baltocdn.com/helm/signing.asc  
+  #     keyring: /usr/share/keyrings/helm.gpg
+
+  # - name: Add helm repository.
+  #   apt_repository:
+  #     repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main"
+  #     state: present
+  #     update_cache: true
+
+  # - name: Add helm key && repo
+  #   block:
+  #     - name: Add helm key
+  #       ansible.builtin.get_url:
+  #         url: https://baltocdn.com/helm/signing.asc
+  #         dest: /usr/share/keyrings/helm.gpg
+
+  #     - name: Add helm repo
+  #       ansible.builtin.apt_repository:
+  #         repo: "deb https://baltocdn.com/helm/stable/debian/ all main"
+  #         state: present
+  #         update_cache: true
+
+  - name: Add Helm apt key.
+    apt_key:
+      url: https://baltocdn.com/helm/signing.asc   
+      state: present
+    register: add_helm_repository_key
+
+  - name: Add helm repository.
+    apt_repository:
+      repo: "deb https://baltocdn.com/helm/stable/debian/ all main"
+      state: present
+      update_cache: true
+
+  - name: Install helm
+    ansible.builtin.apt:
+      pkg:
+      - helm
+    register: helm_install_stat
+
+  - name: Deploy ingress-nginx repo 
+    become: yes
+    become_user: ubuntu    
+    ansible.builtin.command:
+      cmd: "{{ item }}"
+    loop:
+    - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    - helm repo update  
+    # - helm install my-nginx-controller ingress-nginx/ingress-nginx
+    # when: helm_install_stat.changed == true      
+
 
   # handlers:
   # - name: reload sysctl
@@ -267,7 +320,7 @@
 
 
 - name: worker1 instaall kubeadm 
-  hosts: 3.144.48.133
+  hosts: 3.147.45.134
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -285,12 +338,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.21     master
-        10.0.1.82    worker1
-        10.0.1.4    worker2
+        10.0.1.139     master
+        10.0.1.172    worker1
+        10.0.1.156    worker2
 
 - name: instaall kubeadm 
-  hosts: 3.144.48.133    
+  hosts: 3.147.45.134    
   become: yes
   become_user: root      
   tasks:
@@ -540,20 +593,20 @@
 
   - name: output the register variable value
     debug:
-      var:  hostvars['18.116.12.238']['kubeadm_command_output']['stdout']      
+      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']      
   - name: output the register variable value
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
     ansible.builtin.command: 
-      cmd: "{{hostvars['18.116.12.238']['kubeadm_command_output']['stdout']}}"      
+      cmd: "{{hostvars['3.135.247.159']['kubeadm_command_output']['stdout']}}"      
     when: 
     - not kube_join_stat.stat.exists                       
-    # - not hostvars['18.116.12.238']['kube_init_stat']['stat']['exists']
+    # - not hostvars['3.135.247.159']['kube_init_stat']['stat']['exists']
 
 
 - name: worker2 instaall kubeadm 
-  hosts: 3.147.76.167
+  hosts: 3.15.137.48
   become: yes  
   tasks:
   - name: update apt repo & cache
@@ -571,12 +624,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.21     master
-        10.0.1.82    worker1
-        10.0.1.4    worker2
+        10.0.1.139     master
+        10.0.1.172    worker1
+        10.0.1.156    worker2
 
 - name: instaall kubeadm 
-  hosts: 3.147.76.167    
+  hosts: 3.15.137.48    
   become: yes
   become_user: root      
   tasks:
@@ -714,17 +767,30 @@
 
   - name: output the register variable value
     debug:
-      var:  hostvars['18.116.12.238']['kubeadm_command_output']['stdout']      
+      var:  hostvars['3.135.247.159']['kubeadm_command_output']['stdout']      
   - name: output the register variable value
     debug:
       var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
   - name: kubeadm join 
     ansible.builtin.command: 
-      cmd: "{{hostvars['18.116.12.238']['kubeadm_command_output']['stdout']}}"      
+      cmd: "{{hostvars['3.135.247.159']['kubeadm_command_output']['stdout']}}"      
     when: k8s_prerequists_state.changed == true                        
 
 
 
+- name: master Deploy ingress nginx 
+  hosts: 3.135.247.159
+  become: yes  
+  become_user: ubuntu
+  tasks:
+  - name: copy helm value file
+    copy:
+      src: values.yaml
+      dest: /home/ubuntu/myvalues.yaml
+  - name: Deploy ingress-nginx repo    
+    ansible.builtin.command:
+      cmd: helm install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
+   
 
   # - name: output the register variable value
   #   debug:
