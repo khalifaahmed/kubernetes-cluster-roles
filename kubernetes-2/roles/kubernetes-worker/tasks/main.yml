@@ -133,13 +133,13 @@
 
 - name: output the register variable value
   debug:
-    var:  hostvars['18.119.162.48']['kubeadm_command_output']['stdout']      
+    var:  hostvars['18.117.109.89']['kubeadm_command_output']['stdout']      
 - name: output the register variable value
   debug:
     var:  hostvars['master_instaall_kubeadm']['kubeadm_command_output']['stdout']
 - name: kubeadm join 
   ansible.builtin.command: 
-    cmd: "{{hostvars['18.119.162.48']['kubeadm_command_output']['stdout']}}"      
+    cmd: "{{hostvars['18.117.109.89']['kubeadm_command_output']['stdout']}}"      
   when: 
   - not kube_join_stat.stat.exists                       
-  # - not hostvars['18.119.162.48']['kube_init_stat']['stat']['exists']
+  # - not hostvars['18.117.109.89']['kube_init_stat']['stat']['exists']

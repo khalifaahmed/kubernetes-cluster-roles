@@ -1,8 +1,9 @@
 ---
 # handlers:
-# - name: reload sysctl
-#   ansible.builtin.command:
-#     cmd:  sysctl --system
+- name: reload sysctl
+  ansible.builtin.command:
+    cmd:  sysctl --system
+
 # - name: restart containerd
 #   systemd:
 #     name: containerd

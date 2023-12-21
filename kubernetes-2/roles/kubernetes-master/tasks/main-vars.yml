@@ -11,10 +11,6 @@
   ansible.builtin.hostname:
     name: master
 
-- debug:
-    var:
-    - hostvars['18.117.109.89']['ansible_all_ipv4_addresses']
-
 - name: Install a kubernetes prerequists packages
   ansible.builtin.apt:
     update_cache: true
@@ -75,17 +71,6 @@
   - reload sysctl
 
 - meta: flush_handlers
-
-#- name: reload sysctl
-#  ansible.builtin.command:
-#    cmd:  sysctl --system
-#  when: sysctl_file_state.changed == true
-
-#- name: Install containerd
-#  ansible.builtin.apt:
-#    pkg:
-#    - containerd
-#    update_cache: yes
 
 - name: configure containerd
   block:
@@ -180,7 +165,7 @@
   become: yes
   become_user: root
   ansible.builtin.command: 
-    cmd: kubeadm init    #--apiserver-advertise-address=18.117.109.89
+    cmd: kubeadm init    #--apiserver-advertise-address=${master_public_ip}
   when: not kube_init_stat.stat.exists    
 
 - name: Create /home/ubuntu/.kube directory if it does not exist
@@ -207,7 +192,7 @@
   register: kubeadm_command_output
 - name: output the register variable value by hosts
   debug:
-    var:  hostvars['18.117.109.89']['kubeadm_command_output']['stdout']
+    var:  hostvars['${master_public_ip}']['kubeadm_command_output']['stdout']
 - name: deploy weave cni
   become: yes
   become_user: ubuntu
@@ -229,7 +214,7 @@
         server {
           listen 0.0.0.0:51555;
           #TCP traffic will be forwarded to the specified server
-          proxy_pass 10.0.1.245:6443;
+          proxy_pass ${master_private_ip}:6443;
         }
       }
 

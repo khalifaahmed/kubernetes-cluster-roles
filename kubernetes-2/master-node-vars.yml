@@ -2,18 +2,8 @@
 - name: master install kubeadm 
   hosts: ${master_public_ip}
   become: yes  
+  become_user: root
   tasks:
-  - name: update apt repo & cache
-    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
-  - name: making some alias
-    ansible.builtin.blockinfile:
-      path: /etc/bash.bashrc
-      block: |
-        alias c=clear
-        alias k=kubectl    
-  - name: Set a hostname
-    ansible.builtin.hostname:
-      name: master
   - name: configure dns names for the cluster nodes locally
     ansible.builtin.blockinfile:
       path: /etc/hosts
@@ -21,29 +11,17 @@
         ${master_private_ip}     master
         ${worker1_private_ip}    worker1
         ${worker2_private_ip}    worker2
-
-- name: master_install_kubeadm 
-  hosts: ${master_public_ip}
-  become: yes
-  become_user: root
-  gather_facts: no   
+## if you remove "ansible block begin" and "ansible block ends" ==> ansible will loose track of the file state
   roles:
   - kubernetes-master
 
 
-
-- name: worker1 instaall kubeadm 
+- name: worker1 install kubeadm
   hosts: ${worker1_public_ip}
   become: yes  
   tasks:
-  - name: update apt repo & cache
-    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
-  - name: making some alias
-    ansible.builtin.blockinfile:
-      path: /etc/bash.bashrc
-      block: |
-        alias c=clear
-        alias k=kubectl    
+#  - name: update apt repo & cache
+#    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
   - name: Set a hostname
     ansible.builtin.hostname:
       name: worker1
@@ -54,27 +32,16 @@
         ${master_private_ip}     master
         ${worker1_private_ip}    worker1
         ${worker2_private_ip}    worker2
-
-- name: instaall kubeadm 
-  hosts: ${worker1_public_ip}    
-  become: yes
-  become_user: root      
-  roles:
-  - kubernetes-worker
+#  roles:
+#  - kubernetes-worker
 
 
-- name: worker2 instaall kubeadm 
+- name: worker2 install kubeadm
   hosts: ${worker2_public_ip}
   become: yes  
   tasks:
-  - name: update apt repo & cache
-    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
-  - name: making some alias
-    ansible.builtin.blockinfile:
-      path: /etc/bash.bashrc
-      block: |
-        alias c=clear
-        alias k=kubectl    
+#  - name: update apt repo & cache
+#    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
   - name: Set a hostname
     ansible.builtin.hostname:
       name: worker2
@@ -86,31 +53,33 @@
         ${worker1_private_ip}    worker1
         ${worker2_private_ip}    worker2
 
-- name: instaall kubeadm 
-  hosts: ${worker2_public_ip}    
+- name: install kubeadm on both worker nodes
+  hosts: ${worker1_public_ip},${worker2_public_ip}
   become: yes
-  become_user: root      
+  become_user: root
+  gather_facts: no
   roles:
   - kubernetes-worker
 
 
-- name: master Deploy ingress nginx 
+- name: master Deploy ingress nginx && myapp
   hosts: ${master_public_ip}
-  become: yes  
-  become_user: ubuntu
+#  become: yes
+#  become_user: ubuntu
+  gather_facts: no
   tasks:
-  - name: copy helm value file
+  - name: copy helm values file
     copy:
       src: values.yaml
       dest: /home/ubuntu/myvalues.yaml
-  - name: Deploy ingress-nginx repo    
+  - name: Deploy ingress-nginx controller
     ansible.builtin.command:
       cmd: helm upgrade --install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
   - name: copy myapp yaml file
     copy:
       src: myapp.yaml
       dest: /home/ubuntu/myapp.yaml
-  - name: Deploy ingress-nginx repo    
+  - name: Deploy myapp
     ansible.builtin.command:
       cmd: kubectl apply -f /home/ubuntu/myapp.yaml
 

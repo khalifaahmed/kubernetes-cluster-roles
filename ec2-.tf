@@ -38,6 +38,10 @@ resource "aws_instance" "master_nodes" {
   tags = {
     "Name" = "master-node-${count.index}"
   }
+#  provisioner "local-exec" {
+#    when    = destroy
+#    command = "kubectl config delete-context ahmed@cloud-cluster ; kubectl config delete-user ahmed-admin ; kubectl config delete-cluster cloud-cluster"
+#  }
 }
 
 resource "aws_instance" "worker_nodes" {
@@ -62,7 +66,7 @@ resource "aws_instance" "worker_nodes" {
 
 resource "null_resource" "kube_cluster" {
   provisioner "local-exec" {
-    command = "export master_public_ip=${aws_instance.master_nodes[0].public_ip} master_private_ip=${aws_instance.master_nodes[0].private_ip} worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip} worker2_private_ip=${aws_instance.worker_nodes[1].private_ip} ; envsubst '$master_public_ip,$worker1_public_ip,$worker2_public_ip' < ./kubernetes-2/roles/kubernetes-worker/tasks/main-vars > ./kubernetes-2/roles/kubernetes-worker/tasks/main.yml ; envsubst '$master_public_ip,$master_private_ip,$worker1_public_ip,$worker1_private_ip,$worker2_public_ip,$worker2_private_ip' < ./kubernetes-2/master-node-vars > ./kubernetes-2/master-node.yaml; sleep 125; ansible-playbook --inventory ${aws_instance.master_nodes[0].public_ip},${aws_instance.worker_nodes[0].public_ip},${aws_instance.worker_nodes[1].public_ip} --user ubuntu  ./kubernetes-2/master-node.yaml"
+    command = "export master_public_ip=${aws_instance.master_nodes[0].public_ip} master_private_ip=${aws_instance.master_nodes[0].private_ip} worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip} worker2_private_ip=${aws_instance.worker_nodes[1].private_ip} ; envsubst '$master_public_ip,$master_private_ip' < ./kubernetes-2/roles/kubernetes-master/tasks/main-vars.yml > ./kubernetes-2/roles/kubernetes-master/tasks/main.yml ; envsubst '$master_public_ip,$worker1_public_ip,$worker2_public_ip' < ./kubernetes-2/roles/kubernetes-worker/tasks/main-vars.yml > ./kubernetes-2/roles/kubernetes-worker/tasks/main.yml ; envsubst '$master_public_ip,$master_private_ip,$worker1_public_ip,$worker1_private_ip,$worker2_public_ip,$worker2_private_ip' < ./kubernetes-2/master-node-vars.yml > ./kubernetes-2/master-node.yml; sleep 125; ansible-playbook --inventory ${aws_instance.master_nodes[0].public_ip},${aws_instance.worker_nodes[0].public_ip},${aws_instance.worker_nodes[1].public_ip} --user ubuntu ./kubernetes-2/master-node.yml"
   }
   depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
   lifecycle {
@@ -74,8 +78,17 @@ resource "null_resource" "ssh_config" {
  provisioner "local-exec" {
    command = "export master_public_ip=${aws_instance.master_nodes[0].public_ip}  worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip} ; envsubst '$master_public_ip,$worker1_public_ip,$worker2_public_ip' < ./ssh-config-vars > ./ssh-config ; cp ssh-config ~/.ssh/config"
  }
- depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1],aws_instance.worker_nodes[1],null_resource.kube_cluster]
+ depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1],aws_instance.worker_nodes[1]]
  lifecycle {
    replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0] ]
  }    
 }
+
+resource "null_resource" "configure_kubeconfig_on_host" {
+  provisioner "local-exec" {
+    command = "scp ubuntu@${aws_instance.master_nodes[0].public_ip}:/etc/kubernetes/pki/ca.crt ./kubernetes-2/kube-certs/ca.crt ; scp ubuntu@${aws_instance.master_nodes[0].public_ip}:/etc/kubernetes/pki/apiserver-etcd-client.crt ./kubernetes-2/kube-certs/client.crt ; ssh ubuntu@${aws_instance.master_nodes[0].public_ip} 'sudo cat /etc/kubernetes/pki/apiserver-etcd-client.key' > ./kubernetes-2/kube-certs/client.key ;  kubectl config set-cluster cloud-cluster --certificate-authority=./kubernetes-2/kube-certs/ca.crt --server=https://${aws_instance.master_nodes[0].public_ip}:51555 ; kubectl config set-credentials ahmed-admin --client-certificate=./kubernetes-2/kube-certs/client.crt --client-key=./kubernetes-2/kube-certs/client.key ; kubectl config set-context ahmed@cloud-cluster --cluster=cloud-cluster --user=ahmed-admin --namespace=default ; kubectl config use-context ahmed@cloud-cluster"
+  }
+}
+
+
+

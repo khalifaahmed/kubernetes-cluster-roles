@@ -17,4 +17,4 @@ Host worker2
     StrictHostKeyChecking no
 
 Host *
-StrictHostKeyChecking no
+    StrictHostKeyChecking no
