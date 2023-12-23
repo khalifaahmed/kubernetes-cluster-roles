@@ -2,3 +2,5 @@
 *.tfstate*
 *terraform.tfstate*
 *key*
+*cer*
+join_command*

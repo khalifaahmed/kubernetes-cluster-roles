@@ -16,9 +16,9 @@
   - kubernetes-master
 
 
-- name: worker1 install kubeadm
+- name: worker1 hostname && local dns
   hosts: ${worker1_public_ip}
-  become: yes  
+  become: yes
   tasks:
 #  - name: update apt repo & cache
 #    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
@@ -32,16 +32,11 @@
         ${master_private_ip}     master
         ${worker1_private_ip}    worker1
         ${worker2_private_ip}    worker2
-#  roles:
-#  - kubernetes-worker
 
-
-- name: worker2 install kubeadm
+- name: worker2 hostname && local dns
   hosts: ${worker2_public_ip}
   become: yes  
   tasks:
-#  - name: update apt repo & cache
-#    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
   - name: Set a hostname
     ansible.builtin.hostname:
       name: worker2
@@ -64,8 +59,6 @@
 
 - name: master Deploy ingress nginx && myapp
   hosts: ${master_public_ip}
-#  become: yes
-#  become_user: ubuntu
   gather_facts: no
   tasks:
   - name: copy helm values file
@@ -84,8 +77,5 @@
       cmd: kubectl apply -f /home/ubuntu/myapp.yaml
 
 
-  # - name: output the register variable value
-  #   debug:
-  #     var:  hostvars['13.50.110.214']['kubeadm_command_output']['stdout']
-  
+
   # ansible-inventory --list

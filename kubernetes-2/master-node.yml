@@ -1,6 +1,6 @@
 ---
 - name: master install kubeadm 
-  hosts: 18.117.109.89
+  hosts: 3.144.75.191
   become: yes  
   become_user: root
   tasks:
@@ -8,16 +8,16 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.245     master
-        10.0.1.217    worker1
-        10.0.1.58    worker2
+        10.0.1.239     master
+        10.0.1.21    worker1
+        10.0.1.118    worker2
 ## if you remove "ansible block begin" and "ansible block ends" ==> ansible will loose track of the file state
   roles:
   - kubernetes-master
 
 
 - name: worker1 install kubeadm
-  hosts: 18.191.221.235
+  hosts: 18.189.29.241
   become: yes  
   tasks:
 #  - name: update apt repo & cache
@@ -29,15 +29,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.245     master
-        10.0.1.217    worker1
-        10.0.1.58    worker2
-#  roles:
-#  - kubernetes-worker
-
+        10.0.1.239     master
+        10.0.1.21    worker1
+        10.0.1.118    worker2
 
 - name: worker2 install kubeadm
-  hosts: 18.222.248.71
+  hosts: 3.14.88.177
   become: yes  
   tasks:
 #  - name: update apt repo & cache
@@ -49,12 +46,12 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        10.0.1.245     master
-        10.0.1.217    worker1
-        10.0.1.58    worker2
+        10.0.1.239     master
+        10.0.1.21    worker1
+        10.0.1.118    worker2
 
 - name: install kubeadm on both worker nodes
-  hosts: 18.191.221.235,18.222.248.71
+  hosts: 18.189.29.241,3.14.88.177
   become: yes
   become_user: root
   gather_facts: no
@@ -63,7 +60,7 @@
 
 
 - name: master Deploy ingress nginx && myapp
-  hosts: 18.117.109.89
+  hosts: 3.144.75.191
 #  become: yes
 #  become_user: ubuntu
   gather_facts: no

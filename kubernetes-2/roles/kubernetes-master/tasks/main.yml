@@ -11,10 +11,6 @@
   ansible.builtin.hostname:
     name: master
 
-- debug:
-    var:
-    - hostvars['18.117.109.89']['ansible_all_ipv4_addresses']
-
 - name: Install a kubernetes prerequists packages
   ansible.builtin.apt:
     update_cache: true
@@ -76,17 +72,6 @@
 
 - meta: flush_handlers
 
-#- name: reload sysctl
-#  ansible.builtin.command:
-#    cmd:  sysctl --system
-#  when: sysctl_file_state.changed == true
-
-#- name: Install containerd
-#  ansible.builtin.apt:
-#    pkg:
-#    - containerd
-#    update_cache: yes
-
 - name: configure containerd
   block:
     - name: start & enable containerd.service
@@ -145,17 +130,24 @@
 #     block: |
 #       deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /
 #     create: true
-
+#
+#- name: Create /etc/apt/keyrings directory if it does not exist
+#  ansible.builtin.file:
+#    path: /etc/apt/keyrings
+#    state: directory
+#    mode: 755
 
 - name: Add Kubernetes apt key.
   apt_key:
-    url: https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key    
+#    url: https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key
+    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
     state: present
   register: add_repository_key
 
 - name: Add Kubernetes repository.
   apt_repository:
-    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /"
+#    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /"
+    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
     state: present
     update_cache: true
 
@@ -170,44 +162,79 @@
   ansible.builtin.apt:
     # update_cache: yes
     pkg:
-      - kubelet=1.28.2-1.1
-      - kubeadm=1.28.2-1.1
-      - kubectl=1.28.2-1.1
+      - kubelet=1.29.0-1.1
+      - kubeadm=1.29.0-1.1
+      - kubectl=1.29.0-1.1
     allow_downgrade: true
   when: not kube_init_stat.stat.exists  
 
-- name: kubeadm init
+- name: kubeadm init --apiserver-advertise-address=0.0.0.0
   become: yes
   become_user: root
   ansible.builtin.command: 
-    cmd: kubeadm init    #--apiserver-advertise-address=18.117.109.89
+    cmd: kubeadm init  --apiserver-advertise-address=0.0.0.0
   when: not kube_init_stat.stat.exists    
 
-- name: Create /home/ubuntu/.kube directory if it does not exist
-  ansible.builtin.file:
-    path: /home/ubuntu/.kube
-    state: directory
-- name: Copy kubeconfig file 
-  become: yes
-  become_user: root
-  copy:
-    src: /etc/kubernetes/admin.conf 
-    dest: /home/ubuntu/.kube/config
-    remote_src: true
-- name: change ownership of kubeconfig file
-  ansible.builtin.file:      
-    path: /home/ubuntu/.kube/config
-    state: file
-    owner: ubuntu
-    group: ubuntu         
-    mode: "0600"   
+- name: configure kubeconfig for user ubuntu
+  block:
+    - name: Create /home/ubuntu/.kube directory if it does not exist
+      ansible.builtin.file:
+        path: /home/ubuntu/.kube
+        state: directory
+
+    - name: Copy kubeconfig file
+      become: yes
+      become_user: root
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/ubuntu/.kube/config
+        remote_src: true
+
+    - name: change ownership of kubeconfig file
+      ansible.builtin.file:
+        path: /home/ubuntu/.kube/config
+        state: file
+        owner: ubuntu
+        group: ubuntu
+        mode: "0600"
+  when: not kube_init_stat.stat.exists
+
 - name: generate token for worker nodes to join
-  ansible.builtin.command: 
+  ansible.builtin.command:
     cmd: kubeadm token create --print-join-command
   register: kubeadm_command_output
 - name: output the register variable value by hosts
   debug:
-    var:  hostvars['18.117.109.89']['kubeadm_command_output']['stdout']
+    var:  hostvars['3.144.75.191']['kubeadm_command_output']['stdout']
+
+
+#- name: shell command
+#  shell: kubeadm token create --print-join-command
+#  register: kubeadm_command_output
+#- debug: var=kubeadm_command_output
+#- name: configure file /home/ubuntu/join_command.sh
+#  ansible.builtin.blockinfile:
+#    path: /home/ubuntu/join_command.sh
+#    block: |
+#      {{ kubeadm_command_output.stdout }}
+#    create: true
+#- name: fetch join_command.sh
+#  ansible.builtin.fetch:
+#    src: /home/ubuntu/join_command.sh
+#    dest: /home/ahmed/Desktop/terraform/kubernetes-cluster-roles/kubernetes-2/join_command.sh
+#    flat: true
+#    register: fetch_register
+#- debug: var=fetch_register
+
+
+#- name: copy the output to a local file
+#  copy:
+#    src: /home/ubuntu/join_command.sh
+#    dest: join_command.sh
+#    mode: 755
+#  delegate_to: localhost
+
+
 - name: deploy weave cni
   become: yes
   become_user: ubuntu
@@ -229,7 +256,7 @@
         server {
           listen 0.0.0.0:51555;
           #TCP traffic will be forwarded to the specified server
-          proxy_pass 10.0.1.245:6443;
+          proxy_pass 10.0.1.239:6443;
         }
       }
 
