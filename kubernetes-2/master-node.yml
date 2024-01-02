@@ -1,88 +1,46 @@
 ---
-- name: master install kubeadm 
-  hosts: 3.144.75.191
-  become: yes  
+- name: master install kubeadm
+  hosts: master_nodes
+  become: yes
   become_user: root
-  tasks:
-  - name: configure dns names for the cluster nodes locally
-    ansible.builtin.blockinfile:
-      path: /etc/hosts
-      block: |
-        10.0.1.239     master
-        10.0.1.21    worker1
-        10.0.1.118    worker2
-## if you remove "ansible block begin" and "ansible block ends" ==> ansible will loose track of the file state
   roles:
   - kubernetes-master
 
 
-- name: worker1 install kubeadm
-  hosts: 18.189.29.241
-  become: yes  
-  tasks:
-#  - name: update apt repo & cache
-#    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
-  - name: Set a hostname
-    ansible.builtin.hostname:
-      name: worker1
-  - name: making some alias
-    ansible.builtin.blockinfile:
-      path: /etc/hosts
-      block: |
-        10.0.1.239     master
-        10.0.1.21    worker1
-        10.0.1.118    worker2
-
-- name: worker2 install kubeadm
-  hosts: 3.14.88.177
-  become: yes  
-  tasks:
-#  - name: update apt repo & cache
-#    apt: update_cache=yes force_apt_get=yes cache_valid_time=3600 upgrade=dist
-  - name: Set a hostname
-    ansible.builtin.hostname:
-      name: worker2
-  - name: configure dns names for the cluster nodes locally
-    ansible.builtin.blockinfile:
-      path: /etc/hosts
-      block: |
-        10.0.1.239     master
-        10.0.1.21    worker1
-        10.0.1.118    worker2
-
 - name: install kubeadm on both worker nodes
-  hosts: 18.189.29.241,3.14.88.177
+  hosts: worker_nodes
   become: yes
-  become_user: root
-  gather_facts: no
   roles:
   - kubernetes-worker
 
 
 - name: master Deploy ingress nginx && myapp
-  hosts: 3.144.75.191
-#  become: yes
-#  become_user: ubuntu
+  hosts: master_nodes
   gather_facts: no
   tasks:
   - name: copy helm values file
     copy:
       src: values.yaml
       dest: /home/ubuntu/myvalues.yaml
-  - name: Deploy ingress-nginx controller
-    ansible.builtin.command:
-      cmd: helm upgrade --install my-nginx-controller ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml
-  - name: copy myapp yaml file
-    copy:
-      src: myapp.yaml
-      dest: /home/ubuntu/myapp.yaml
-  - name: Deploy myapp
-    ansible.builtin.command:
-      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
+#  - name: Deploy ingress-nginx controller
+#    shell: >
+#      helm upgrade --install myapp ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml ;
+#      sleep 60 ;
+#      kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.crds.yaml ;
+#      helm install cert-manager --namespace cert-manager --create-namespace --version v1.13.3 jetstack/cert-manager ;
+#      kubectl create ns monitoring --dry-run=client -o yaml > /home/ubuntu/monitoring-ns ;
+#      kubectl apply -f /home/ubuntu/monitoring-ns ;
+#      helm upgrade --install monitoring -n monitoring prometheus-community/kube-prometheus-stack --create-namespace;
+#      kubectl port-forward --address 0.0.0.0 -n monitoring svc/monitoring-grafana 8000:80 > /dev/null &
+#      kubectl port-forward --address 0.0.0.0 -n monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090 > /dev/null &
+#
+#  - name: copy myapp yaml file
+#    copy:
+#      src: myapp.yaml
+#      dest: /home/ubuntu/myapp.yaml
+#  - name: Deploy myapp
+#    ansible.builtin.command:
+#      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
 
 
-  # - name: output the register variable value
-  #   debug:
-  #     var:  hostvars['13.50.110.214']['kubeadm_command_output']['stdout']
-  
-  # ansible-inventory --list
+# ansible-inventory --list

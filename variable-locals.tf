@@ -49,19 +49,11 @@ variable "extra_nic" {
   type = bool
 }
 
-# variable "public_cidrs" {
-#   type = list
-#   default = [for i in range(1, 255, 2) : cidrsubnet("10.0.0.0/16", 8, i)]
-# }
-# variable "private_cidrs" {
-#   type = list
-# }
-# variable "max_subnets" {
-#   type        = number
-#   default     = 3
-#   description = "the upper limit of the number of public subnets or private subnets separately, it will overwrite the public_subnet_count or private_subnet_count variables"
-# }
 #variable will not be working as variable do not accept fuctions inside them man ==> use local instead man
+
+locals {
+  worker_nodes_count   = length(data.aws_availability_zones.available.names) - 1
+}
 
 locals {
   public_subnet_count  = length(data.aws_availability_zones.available.names)

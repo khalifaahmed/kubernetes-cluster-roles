@@ -30,11 +30,36 @@ output "number_of_az_in_this_region" {
   value = length(data.aws_availability_zones.available.names)
 }
 
-
 resource "random_shuffle" "az_list" {
   input        = data.aws_availability_zones.available.names
   result_count = local.max_subnets
 }
+
+
+data "aws_subnets" "main_vpc_subnets" {
+  filter {
+    name   = "vpc-id"
+    values = [ aws_vpc.my_vpc.id ]
+  }
+  tags = {
+    Tier = "public"
+  }
+  depends_on = [aws_subnet.public, aws_subnet.private]
+}
+
+output "main_vpc_subnets_man" {
+  value = data.aws_subnets.main_vpc_subnets.ids
+}
+
+resource "random_shuffle" "subnets_list" {
+  input        = data.aws_subnets.main_vpc_subnets.ids
+  result_count = local.max_subnets
+}
+
+output "random_shuffle_subnets_list_man" {
+  value = random_shuffle.subnets_list.result
+}
+
 
 resource "aws_subnet" "public" {
   count                   = local.public_subnet_count
@@ -44,6 +69,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
   tags = {
     Name = "${var.name}_public_${count.index + 1}"
+    Tier = "public"
   }
 }
 
@@ -55,6 +81,7 @@ resource "aws_subnet" "private" {
   map_public_ip_on_launch = false
   tags = {
     Name = "${var.name}_private_${count.index + 1}"
+    Tier = "private"
   }
 }
 

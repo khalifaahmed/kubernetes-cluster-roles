@@ -7,117 +7,137 @@
 #      - "{{ansible_facts.ipv4}}"
 #      - "{{ansible_facts}}"
 
-- name: making some alias
-  ansible.builtin.blockinfile:
-    path: /etc/bash.bashrc
-    block: |
-      alias c=clear
-      alias k=kubectl
-      alias la='ls -lahF'
-      source <(kubectl completion bash)
+  - name: making some alias
+    ansible.builtin.blockinfile:
+      path: /etc/bashrc
+      block: |
+        alias c=clear
+        alias k=kubectl
+        alias la='ls -lahF'
+        source <(kubectl completion bash)
 
-- name: Set a hostname
-  ansible.builtin.hostname:
-    name: master
+  - name: Set a hostname
+    ansible.builtin.hostname:
+      name: master
 
-- name: Install a kubernetes prerequists packages
-  ansible.builtin.apt:
-    update_cache: true
-    pkg:
-    - apt-transport-https
-    - ca-certificates
-    - curl
-    - gpg
-    - containerd
-    - nginx
+  - name: ADD repo
+    get_url:
+      url: https://download.docker.com/linux/centos/docker-ce.repo
+      dest: /etc/yum.repos.d/docker-ce.repo
 
-- name: disable swap
-  ansible.builtin.command:
-    cmd:  swapoff -a
+  - name: ADD k8s repo
+    ansible.builtin.blockinfile:
+      path: /etc/yum.repos.d/kubernetes.repo
+      block: |
+        [kubernetes]
+        name=Kubernetes
+        baseurl=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/
+        enabled=1
+        gpgcheck=1
+        gpgkey=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key
+        exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 
-- name: configure k8s prerequist modules
-  ansible.builtin.lineinfile:
-    path: /etc/modules-load.d/k8s.conf
-    line: "{{ item }}"
-    create: yes      
-  loop: 
-  - overlay
-  - br_netfilter
-  register: k8s_prerequists_state
+  - name: Install a kubernetes prerequists packages
+    ansible.builtin.apt:
+      update_cache: true
+      yum:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gpg
+      - containerd.io
+      - nginx
 
-- name: k8s prerequists commands
-  ansible.builtin.command:
-    cmd: "{{ item }}"
-  loop:
-  - sudo modprobe overlay
-  - sudo modprobe br_netfilter  
-  when: k8s_prerequists_state.changed == true
-      
-- name: configure file /etc/sysctl.d/k8s.conf
-  ansible.builtin.lineinfile:
-    path: /etc/sysctl.d/k8s.conf
-    line: "{{ item }}"
-    create: yes      
-  loop: 
-  - net.bridge.bridge-nf-call-iptables  = 1
-  - net.bridge.bridge-nf-call-ip6tables = 1
-  - net.ipv4.ip_forward                 = 1
-  register: sysctl_file_state
-  notify:
-  - reload sysctl
+  - name: disable swap
+    ansible.builtin.command:
+      cmd:  swapoff -a
 
-- meta: flush_handlers
+  - name: configure k8s prerequist modules
+    ansible.builtin.lineinfile:
+      path: /etc/modules-load.d/k8s.conf
+      line: "{{ item }}"
+      create: yes
+    loop:
+    - overlay
+    - br_netfilter
+    register: k8s_prerequists_state
 
-- name: configure containerd
-  block:
-    - name: start & enable containerd.service
-      systemd:
-        name: containerd
-        state: started
-        enabled: true
+  - name: k8s prerequists commands
+    ansible.builtin.command:
+      cmd: "{{ item }}"
+    loop:
+    - sudo modprobe overlay
+    - sudo modprobe br_netfilter
+    when: k8s_prerequists_state.changed == true
 
-    - name: copy containerd config defaults into a register
-      ansible.builtin.command:
-        cmd: containerd config default
-      register: containerd_config_cmd   #cmd_result
+  - name: configure file /etc/sysctl.d/k8s.conf
+    ansible.builtin.lineinfile:
+      path: /etc/sysctl.d/k8s.conf
+      line: "{{ item }}"
+      create: yes
+    loop:
+    - net.bridge.bridge-nf-call-iptables  = 1
+    - net.bridge.bridge-nf-call-ip6tables = 1
+    - net.ipv4.ip_forward                 = 1
+    register: sysctl_file_state
+    notify:
+    - reload sysctl
 
-    - name: configure file /etc/containerd/config.toml
-      ansible.builtin.blockinfile:
-        path: /etc/containerd/config.toml
-        block: |
-          {{ containerd_config_cmd.stdout }}
-        create: true
+  - meta: flush_handlers
 
-    - name: removing ansible marker from /etc/containerd/config.toml
-      ansible.builtin.lineinfile:
-        path: /etc/containerd/config.toml
-        state: absent
-        regexp: 'ANSIBLE'
+  - name: configure containerd
+    block:
+      - name: start & enable containerd.service
+        systemd:
+          name: containerd
+          state: started
+          enabled: true
 
-    - name: configure Cgroup in containerd config file
-      lineinfile:
-        path: /etc/containerd/config.toml
-        regexp: '^            SystemdCgroup = '
-        line: '            SystemdCgroup = true'
+      - name: copy containerd config defaults into a register
+        ansible.builtin.command:
+          cmd: containerd config default
+        register: containerd_config_cmd   #cmd_result
 
-    - name: restart containerd
-      systemd:
-        name: containerd
-        state: restarted
+      - name: configure file /etc/containerd/config.toml
+        ansible.builtin.blockinfile:
+          path: /etc/containerd/config.toml
+          block: |
+            {{ containerd_config_cmd.stdout }}
+          create: true
 
-  when: k8s_prerequists_state.changed == true
+      - name: removing ansible marker from /etc/containerd/config.toml
+        ansible.builtin.lineinfile:
+          path: /etc/containerd/config.toml
+          state: absent
+          regexp: 'ANSIBLE'
 
-- name: Add Kubernetes apt key
-  apt_key:
-    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
-    state: present
-  register: add_repository_key
+      - name: configure Cgroup in containerd config file
+        lineinfile:
+          path: /etc/containerd/config.toml
+          regexp: '^            SystemdCgroup = '
+          line: '            SystemdCgroup = true'
 
-- name: Add Kubernetes repository
-  apt_repository:
-    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
-    state: present
-    update_cache: true
+      - name: restart containerd
+        systemd:
+          name: containerd
+          state: restarted
+
+    when: k8s_prerequists_state.changed == true
+
+
+
+
+#- name: Add Kubernetes apt key
+#  apt_key:
+#    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+#    state: present
+#  register: add_repository_key
+#
+#- name: Add Kubernetes repository
+#  apt_repository:
+#    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+#    state: present
+#    update_cache: true
 
 - name: Check if file /etc/kubernetes/admin.conf exists
   stat: path=/etc/kubernetes/admin.conf
@@ -207,7 +227,7 @@
         state: started
         enabled: true
 
-    - name: configure reverse proxy by nginx to access the cluster externally
+    - name: configure reverse proxy by nginx
       ansible.builtin.blockinfile:
         path: /etc/nginx/nginx.conf
         block: |
@@ -267,7 +287,7 @@
       register: helm_install_stat
   when: not kube_init_stat.stat.exists
 
-- name: Add helm repos
+- name: Deploy ingress-nginx repo 
   become: yes
   become_user: ubuntu    
   ansible.builtin.command:

@@ -4,6 +4,11 @@
   ansible.builtin.command:
     cmd:  sysctl --system
 
+- name: Reload nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+
 # - name: restart containerd
 #   systemd:
 #     name: containerd
