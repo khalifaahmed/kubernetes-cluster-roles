@@ -35,12 +35,16 @@ resource "aws_instance" "master_nodes" {
   }
   tags = {
     "Name" = "master-node-${count.index}"
+    "master" = "true"
+    "terraform" = "true"
   }
 #  provisioner "local-exec" {
 #    when    = destroy
 #    command = "kubectl config delete-context ahmed@cloud-cluster ; kubectl config delete-user ahmed-admin ; kubectl config delete-cluster cloud-cluster"
 #  }
 }
+
+
 
 resource "aws_instance" "worker_nodes" {
   count                       = local.worker_nodes_count
@@ -58,11 +62,16 @@ resource "aws_instance" "worker_nodes" {
   }
   tags = {
     "Name" = "worker-node-${count.index}"
+    "terraform" = "true"
+    "worker" = "true"
   }
 }
 
+
+
 resource "null_resource" "ssh_config" {
   provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
     command = <<EOT
      export master_public_ip=${aws_instance.master_nodes[0].public_ip}  \
             worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} \

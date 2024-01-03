@@ -22,10 +22,10 @@
     copy:
       src: values.yaml
       dest: /home/ubuntu/myvalues.yaml
-#  - name: Deploy ingress-nginx controller
-#    shell: >
-#      helm upgrade --install myapp ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml ;
-#      sleep 60 ;
+  - name: Deploy ingress-nginx controller
+    shell: >
+      helm upgrade --install myapp ingress-nginx/ingress-nginx -f /home/ubuntu/myvalues.yaml ;
+      sleep 60 ;
 #      kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.3/cert-manager.crds.yaml ;
 #      helm install cert-manager --namespace cert-manager --create-namespace --version v1.13.3 jetstack/cert-manager ;
 #      kubectl create ns monitoring --dry-run=client -o yaml > /home/ubuntu/monitoring-ns ;
@@ -34,13 +34,13 @@
 #      kubectl port-forward --address 0.0.0.0 -n monitoring svc/monitoring-grafana 8000:80 > /dev/null &
 #      kubectl port-forward --address 0.0.0.0 -n monitoring svc/monitoring-kube-prometheus-prometheus 9090:9090 > /dev/null &
 #
-#  - name: copy myapp yaml file
-#    copy:
-#      src: myapp.yaml
-#      dest: /home/ubuntu/myapp.yaml
-#  - name: Deploy myapp
-#    ansible.builtin.command:
-#      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
+  - name: copy myapp yaml file
+    copy:
+      src: myapp.yaml
+      dest: /home/ubuntu/myapp.yaml
+  - name: Deploy myapp
+    ansible.builtin.command:
+      cmd: kubectl apply -f /home/ubuntu/myapp.yaml
 
 
 # ansible-inventory --list

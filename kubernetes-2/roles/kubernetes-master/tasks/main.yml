@@ -109,13 +109,13 @@
 
 - name: Add Kubernetes apt key
   apt_key:
-    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    url: https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key
     state: present
   register: add_repository_key
 
 - name: Add Kubernetes repository
   apt_repository:
-    repo: "deb https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+    repo: "deb https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /"
     state: present
     update_cache: true
 
@@ -128,9 +128,9 @@
 - name: Install kubeadm
   ansible.builtin.apt:
     pkg:
-      - kubelet=1.29.0-1.1
-      - kubeadm=1.29.0-1.1
-      - kubectl=1.29.0-1.1
+      - kubelet={{ kubernetes_version }}.0-1.1
+      - kubeadm={{ kubernetes_version }}.0-1.1
+      - kubectl={{ kubernetes_version }}.0-1.1
     allow_downgrade: true
   when: not kube_init_stat.stat.exists  
 

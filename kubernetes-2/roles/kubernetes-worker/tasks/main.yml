@@ -19,9 +19,9 @@
       alias k=kubectl
       alias la='ls -lahF'
 
-- name: Set a hostname
-  ansible.builtin.hostname:
-    name: worker
+#- name: Set a hostname
+#  ansible.builtin.hostname:
+#    name: worker
 
 - name: Install a list of packages
   ansible.builtin.apt:
@@ -122,14 +122,14 @@
 - debug:  var=stat_result.stat.exists
 
 - name: Add k8s key
-  ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  ansible.builtin.shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   when: not stat_result.stat.exists
 
 - name: configure file /etc/apt/sources.list.d/kubernetes.list
   ansible.builtin.blockinfile:
     path: /etc/apt/sources.list.d/kubernetes.list
     block: |
-      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /
     create: true
 
 - name: Check if file /etc/kubernetes/pki/ca.crt exists
@@ -147,9 +147,9 @@
   ansible.builtin.apt:
     update_cache: yes
     pkg:
-      - kubelet=1.29.0-1.1
-      - kubeadm=1.29.0-1.1
-      - kubectl=1.29.0-1.1
+      - kubelet={{ kubernetes_version }}.0-1.1
+      - kubeadm={{ kubernetes_version }}.0-1.1
+      - kubectl={{ kubernetes_version }}.0-1.1
     allow_downgrade: true
 
 - name: Copy join_command.sh

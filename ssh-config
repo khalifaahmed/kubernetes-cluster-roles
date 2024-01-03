@@ -1,17 +1,17 @@
 Host master
-    HostName 18.222.206.239
+    HostName 3.22.120.52
     User ubuntu
     port 22
     StrictHostKeyChecking no
 
 Host worker1
-    HostName 18.117.139.35
+    HostName 18.188.11.56
     User ubuntu
     port 22
     StrictHostKeyChecking no
 
 Host worker2
-    HostName 3.23.103.149
+    HostName 3.128.31.153
     User ubuntu
     port 22
     StrictHostKeyChecking no
