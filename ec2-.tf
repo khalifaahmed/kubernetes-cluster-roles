@@ -95,16 +95,27 @@ export  master_public_ip=${aws_instance.master_nodes[0].public_ip}   master_priv
         worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}  worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}
 export worker_nodes_count=${local.worker_nodes_count}
 echo "[master_nodes]" > ./kubernetes-2/kubernetes_cluster
-for i in $(aws --region us-east-2 ec2 describe-instances --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
 do
-echo $i >> ./kubernetes-2/kubernetes_cluster
+aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
 done
-#echo ${aws_instance.master_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster
 echo "[worker_nodes]" >> ./kubernetes-2/kubernetes_cluster
-for i in $(aws --region us-east-2 ec2 describe-instances --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
 do
-echo $i >> ./kubernetes-2/kubernetes_cluster
+aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
 done
+
+#for i in $(aws --region us-east-2 ec2 describe-instances --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+#do
+#echo $i >> ./kubernetes-2/kubernetes_cluster
+#done
+##echo ${aws_instance.master_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster
+#echo "[worker_nodes]" >> ./kubernetes-2/kubernetes_cluster
+#for i in $(aws --region us-east-2 ec2 describe-instances --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+#do
+#echo $i >> ./kubernetes-2/kubernetes_cluster
+#done
+
 #echo ${aws_instance.worker_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster
 #echo ${aws_instance.worker_nodes[1].public_ip} >> ./kubernetes-2/kubernetes_cluster
 sleep 100
