@@ -47,7 +47,7 @@ resource "aws_instance" "master_nodes" {
 
 
 resource "aws_instance" "worker_nodes" {
-  count                       = local.worker_nodes_count
+  count                       = local.worker_nodes_count 
   ami                         = data.aws_ami.ubuntu_ami.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.key_pair.key_name
@@ -129,6 +129,16 @@ ansible-playbook \
   lifecycle {
     replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
   }
+
+
+
+
+  triggers = {
+    cluster_instance_ids = join(",", aws_instance.worker_nodes[*].id)
+  }
+
+
+
 }
 
 #resource "null_resource" "kube_cluster_3" {
