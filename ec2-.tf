@@ -31,23 +31,32 @@ resource "aws_instance" "master_nodes" {
     volume_size = 10
   }
   credit_specification {
-    cpu_credits = "standard"  #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
+    cpu_credits = "standard" #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
   }
   tags = {
-    "Name" = "master-node-${count.index}"
-    "master" = "true"
+    "Name"      = "master-node-${count.index}"
+    "master"    = "true"
     "terraform" = "true"
   }
-#  provisioner "local-exec" {
-#    when    = destroy
-#    command = "kubectl config delete-context ahmed@cloud-cluster ; kubectl config delete-user ahmed-admin ; kubectl config delete-cluster cloud-cluster"
-#  }
+  #  provisioner "local-exec" {
+  #    when    = destroy
+  #    command = "kubectl config delete-context ahmed@cloud-cluster ; kubectl config delete-user ahmed-admin ; kubectl config delete-cluster cloud-cluster"
+  #  }
+}
+
+resource "aws_eip" "master_nodes_eips" {
+  count = 1
+}
+
+resource "aws_eip_association" "master_nodes_eips_assoc" {
+  count         = 1
+  instance_id   = aws_instance.master_nodes.*.id[count.index]
+  allocation_id = aws_eip.master_nodes_eips.*.id[count.index]
 }
 
 
-
 resource "aws_instance" "worker_nodes" {
-  count                       = local.worker_nodes_count 
+  count                       = local.worker_nodes_count
   ami                         = data.aws_ami.ubuntu_ami.id
   instance_type               = "t3.medium"
   key_name                    = aws_key_pair.key_pair.key_name
@@ -58,21 +67,29 @@ resource "aws_instance" "worker_nodes" {
     volume_size = 10
   }
   credit_specification {
-    cpu_credits = "standard"  #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
+    cpu_credits = "standard" #As T3 instances are launched as unlimited by default. T2 instances are launched as standard by default
   }
   tags = {
-    "Name" = "worker-node-${count.index}"
+    "Name"      = "worker-node-${count.index}"
     "terraform" = "true"
-    "worker" = "true"
+    "worker"    = "true"
   }
 }
 
+resource "aws_eip" "worker_nodes_eips" {
+  count = local.worker_nodes_count
+}
 
+resource "aws_eip_association" "worker_nodes_eips_assoc" {
+  count         = local.worker_nodes_count
+  instance_id   = aws_instance.worker_nodes.*.id[count.index]
+  allocation_id = aws_eip.worker_nodes_eips.*.id[count.index]
+}
 
 resource "null_resource" "ssh_config" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command = <<EOT
+    command     = <<EOT
      export master_public_ip=${aws_instance.master_nodes[0].public_ip}  \
             worker1_public_ip=${aws_instance.worker_nodes[0].public_ip} \
             worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}
@@ -89,22 +106,42 @@ resource "null_resource" "ssh_config" {
 resource "null_resource" "kube_cluster" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command =  <<EOT
-export  master_public_ip=${aws_instance.master_nodes[0].public_ip}   master_private_ip=${aws_instance.master_nodes[0].private_ip}  \
-        worker1_public_ip=${aws_instance.worker_nodes[0].public_ip}  worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} \
-        worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}  worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}
+    command     = <<EOT
+export  master_public_ip=${aws_instance.master_nodes[0].public_ip}   master_private_ip=${aws_instance.master_nodes[0].private_ip}  worker1_public_ip=${aws_instance.worker_nodes[0].public_ip}  worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}  worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}
 export worker_nodes_count=${local.worker_nodes_count}
-echo "[master_nodes]" > ./kubernetes-2/kubernetes_cluster
-for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
-do
-aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
-done
-echo "[worker_nodes]" >> ./kubernetes-2/kubernetes_cluster
-for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
-do
-aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
-done
 
+echo > ./kubernetes-2/master_nodes;
+for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`; do aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/master_nodes; done;
+echo > ./kubernetes-2/worker_nodes;
+for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`; do aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/worker_nodes; done;
+echo [master_nodes] > kubernetes-2/kubernetes_cluster;
+sed '/^[[:space:]]*$/d' kubernetes-2/master_nodes >> kubernetes-2/kubernetes_cluster;
+echo [worker_nodes] >> kubernetes-2/kubernetes_cluster;
+sed '/^[[:space:]]*$/d' kubernetes-2/worker_nodes >> kubernetes-2/kubernetes_cluster
+
+#set hostname for the cluster nodes
+j=0; for i in `cat kubernetes-2/master_nodes`; do ssh ubuntu@$i "sudo hostnamectl hostname master$j"; let j+=1 ; done;
+j=0; for i in `cat kubernetes-2/worker_nodes`; do ssh ubuntu@$i "sudo hostnamectl hostname worker$j"; let j+=1 ; done;
+
+#configure ssh config file on the local host
+echo > ssh_config_file
+j=0; for i in $(cat kubernetes-2/master_nodes); do  echo "Host master$j"; echo "    HostName $i"; echo "    User ubuntu"; echo "    Port 22"; echo "    StrictHostKeyChecking no"; let j+=1 ; done >> ssh_config_file;
+j=0; for i in $(cat kubernetes-2/worker_nodes); do  echo "Host worker$j"; echo "    HostName $i"; echo "    User ubuntu"; echo "    Port 22"; echo "    StrictHostKeyChecking no"; let j+=1 ; done >> ssh_config_file;
+cp ssh_config_file ~/.ssh/config;
+
+#Another solution
+#echo "[master_nodes]" > ./kubernetes-2/kubernetes_cluster
+#for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
+#do
+#aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
+#done
+#echo "[worker_nodes]" >> ./kubernetes-2/kubernetes_cluster
+#for region in `aws ec2 describe-regions --region us-east-1 --output text | cut -f4`
+#do
+#aws ec2 describe-instances --region $region --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*worker*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text >> ./kubernetes-2/kubernetes_cluster
+#done
+
+#Anther solution
 #for i in $(aws --region us-east-2 ec2 describe-instances --filters "Name=instance-state-name,Values=running" "Name=tag:Name,Values=*master*" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
 #do
 #echo $i >> ./kubernetes-2/kubernetes_cluster
@@ -118,49 +155,33 @@ done
 
 #echo ${aws_instance.worker_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster
 #echo ${aws_instance.worker_nodes[1].public_ip} >> ./kubernetes-2/kubernetes_cluster
+
 sleep 100
-ansible-playbook \
---inventory ./kubernetes-2/kubernetes_cluster \
---user ubuntu \
-./kubernetes-2/master-node.yml
+ansible-playbook --inventory ./kubernetes-2/kubernetes_cluster --user ubuntu ./kubernetes-2/master-node.yml
+
     EOT
   }
-  depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+  depends_on = [aws_instance.master_nodes[0], aws_instance.worker_nodes[0], aws_instance.worker_nodes[1]]
   lifecycle {
-    replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+    replace_triggered_by = [aws_instance.master_nodes[0], aws_instance.worker_nodes[0], aws_instance.worker_nodes[1]]
   }
-
-
-
-
   triggers = {
     cluster_instance_ids = join(",", aws_instance.worker_nodes[*].id)
   }
-
-
-
 }
 
 #resource "null_resource" "kube_cluster_3" {
 #  provisioner "local-exec" {
 #    command =  <<EOT
-#export  master_public_ip=${aws_instance.master_nodes[0].public_ip}   master_private_ip=${aws_instance.master_nodes[0].private_ip}  \
-#        worker1_public_ip=${aws_instance.worker_nodes[0].public_ip}  worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} \
-#        worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}  worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}
+#export  master_public_ip=${aws_instance.master_nodes[0].public_ip}   master_private_ip=${aws_instance.master_nodes[0].private_ip}  worker1_public_ip=${aws_instance.worker_nodes[0].public_ip}  worker1_private_ip=${aws_instance.worker_nodes[0].private_ip} worker2_public_ip=${aws_instance.worker_nodes[1].public_ip}  worker2_private_ip=${aws_instance.worker_nodes[1].private_ip}
 #envsubst '$master_public_ip,$master_private_ip'                                                                               < ./kubernetes-2/roles/kubernetes-master/tasks/main-vars.yml > ./kubernetes-2/roles/kubernetes-master/tasks/main.yml
 #envsubst '$master_public_ip,$worker1_public_ip,$worker2_public_ip'                                                            < ./kubernetes-2/roles/kubernetes-worker/tasks/main-vars.yml > ./kubernetes-2/roles/kubernetes-worker/tasks/main.yml
 #envsubst '$master_public_ip,$master_private_ip,$worker1_public_ip,$worker1_private_ip,$worker2_public_ip,$worker2_private_ip' < ./kubernetes-2/master-node-vars.yml                        > ./kubernetes-2/master-node.yml
 #sleep 100
-#ansible-playbook \
-#--inventory ${aws_instance.master_nodes[0].public_ip},${aws_instance.worker_nodes[0].public_ip},${aws_instance.worker_nodes[1].public_ip} \
-#--user ubuntu \
-#./kubernetes-2/master-node.yml
+#ansible-playbook --inventory ${aws_instance.master_nodes[0].public_ip},${aws_instance.worker_nodes[0].public_ip},${aws_instance.worker_nodes[1].public_ip} --user ubuntu ./kubernetes-2/master-node.yml
 #    EOT
 #  }
 #  depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
-#  lifecycle {
-#    replace_triggered_by = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
-#  }
 #}
 
 #resource "null_resource" "configure_kubeconfig_on_host" {
@@ -177,16 +198,5 @@ ansible-playbook \
 #  }
 #  depends_on = [null_resource.kube_cluster]
 #}
-
-
-#aws --region us-east-2 \
-#ec2 describe-instances \
-#--filters \
-#"Name=instance-state-name,Values=running" \
-#"Name=tag:Name,Values=*master*" \
-#--query 'Reservations[*].Instances[*].[PublicIpAddress]' \
-#--output text
-
-
 
 

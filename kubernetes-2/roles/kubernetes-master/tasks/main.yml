@@ -14,11 +14,11 @@
       alias c=clear
       alias k=kubectl
       alias la='ls -lahF'
-      source <(kubectl completion bash)
+      source <(kubectl completion bash | sed s/kubectl/k/g)
 
-- name: Set a hostname
-  ansible.builtin.hostname:
-    name: master
+#- name: Set a hostname
+#  ansible.builtin.hostname:
+#    name: master
 
 - name: Install a kubernetes prerequists packages
   ansible.builtin.apt:

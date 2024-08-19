@@ -1,0 +1,21 @@
+
+Host master0
+    HostName 18.188.142.226
+    User ubuntu
+    Port 22
+    StrictHostKeyChecking no
+Host worker0
+    HostName 3.13.14.106
+    User ubuntu
+    Port 22
+    StrictHostKeyChecking no
+Host worker1
+    HostName 18.119.78.90
+    User ubuntu
+    Port 22
+    StrictHostKeyChecking no
+Host worker2
+    HostName 18.189.86.94
+    User ubuntu
+    Port 22
+    StrictHostKeyChecking no

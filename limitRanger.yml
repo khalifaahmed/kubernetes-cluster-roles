@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cpu-resource-constraint
+spec:
+  limits:
+  - default: # this section defines default limits
+      cpu: 500m
+      memory: 512Mi  
+    defaultRequest: # this section defines default requests
+      cpu: 300m
+      memory: 256Mi
+    max: # max and min define the limit range
+      cpu: "1"
+      memory: 1024Mi
+    min:
+      cpu: 100m
+      memory: 256Mi
+    type: Container
+        
+
+# source <(kubectl completion bash | sed s/kubectl/k/g)      
+# ssh ubuntu@18.221.197.72 "for i in {1..5};do date; ls ; done"
+# for i in $(cat kubernetes_cluster); do echo $i ; done

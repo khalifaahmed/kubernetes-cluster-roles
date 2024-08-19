@@ -52,7 +52,7 @@ variable "extra_nic" {
 #variable will not be working as variable do not accept fuctions inside them man ==> use local instead man
 
 locals {
-  worker_nodes_count   = length(data.aws_availability_zones.available.names) + 1  #- 1
+  worker_nodes_count = length(data.aws_availability_zones.available.names) #+ 1  #- 1
 }
 
 locals {

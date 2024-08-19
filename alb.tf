@@ -5,7 +5,7 @@ resource "aws_lb" "nginx_controller_alb" {
   enable_deletion_protection = false
 
   # attach to the loadbalancer a unique security group just for it, but the public one just for testing purposes
-  security_groups            = ["${aws_security_group.alb_sg.id}", "${aws_security_group.grad_proj_sg["public"].id}"]
+  security_groups = ["${aws_security_group.alb_sg.id}", "${aws_security_group.grad_proj_sg["public"].id}"]
 
   # make the loadbalancer avalaible in each avalaibility zone ih the specified region
   subnets = [for i in range(0, length(data.aws_availability_zones.available.names), 1) : aws_subnet.public[i].id]
@@ -48,9 +48,9 @@ resource "aws_lb_listener" "nginx_controller_listener" {
 
 
 resource "aws_alb_target_group_attachment" "tg_attachment" {
-  count = local.worker_nodes_count
+  count            = local.worker_nodes_count
   target_group_arn = aws_lb_target_group.nginx_controller_tg.arn
-  target_id         = element(split(",", join(",", aws_instance.worker_nodes.*.id)), count.index)
+  target_id        = element(split(",", join(",", aws_instance.worker_nodes.*.id)), count.index)
 }
 
 data "aws_instances" "worker_instances" {
@@ -60,7 +60,7 @@ data "aws_instances" "worker_instances" {
   instance_tags = {
     "worker" = "true"
   }
-  depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
+  depends_on = [aws_instance.master_nodes[0], aws_instance.worker_nodes[0], aws_instance.worker_nodes[1]]
 }
 
 output "worker_nodes_ids" {

@@ -39,7 +39,7 @@ resource "random_shuffle" "az_list" {
 data "aws_subnets" "main_vpc_subnets" {
   filter {
     name   = "vpc-id"
-    values = [ aws_vpc.my_vpc.id ]
+    values = [aws_vpc.my_vpc.id]
   }
   tags = {
     Tier = "public"
