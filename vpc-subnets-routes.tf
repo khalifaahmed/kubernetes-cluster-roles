@@ -56,9 +56,9 @@ resource "random_shuffle" "subnets_list" {
   result_count = local.max_subnets
 }
 
-output "random_shuffle_subnets_list_man" {
-  value = random_shuffle.subnets_list.result
-}
+#output "random_shuffle_subnets_list_man" {
+#  value = random_shuffle.subnets_list.result
+#}
 
 
 resource "aws_subnet" "public" {

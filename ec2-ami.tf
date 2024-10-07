@@ -21,9 +21,9 @@ data "aws_ami" "windows" {
   }
 }
 
-output "windows_ami_id_in_this_region" {
-  value = data.aws_ami.windows.image_id
-}
+#output "windows_ami_id_in_this_region" {
+#  value = data.aws_ami.windows.image_id
+#}
 
 #
 #data "aws_ami" "nat_instance" {
@@ -73,9 +73,9 @@ data "aws_ami" "redhat" {
   }
 }
 
-output "redhat_ami_id_in_this_region" {
-  value = data.aws_ami.redhat.image_id
-}
+#output "redhat_ami_id_in_this_region" {
+#  value = data.aws_ami.redhat.image_id
+#}
 
 data "aws_ami" "amzlinux2" {
   most_recent = true

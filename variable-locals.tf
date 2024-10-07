@@ -53,6 +53,7 @@ variable "extra_nic" {
 
 locals {
   worker_nodes_count = length(data.aws_availability_zones.available.names) #+ 1  #- 1
+  master_nodes_count = 1
 }
 
 locals {
