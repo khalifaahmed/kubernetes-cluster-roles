@@ -1,18 +1,46 @@
-- name: master install kubeadm
-  hosts: all   #worker_nodes #all
+- name: get master private ip man
+  hosts: master_nodes   #worker_nodes #all
   become: yes
   become_user: root
   tasks:
-  - name: Filter and return only selected facts
-    ansible.builtin.setup:
+    - debug: var=ansible_facts.locally_reachable_ips.ipv4[0]
+
+- name: get workers private ip man
+  hosts: worker_nodes   #worker_nodes #all
+  become: yes
+  become_user: root
+  tasks:
+    - debug: var=ansible_facts.locally_reachable_ips.ipv4[0]
+
+- name: output the register variable value
+  debug:
+    var:  hostvars['get master private ip man']['ansible_facts']
+
+
+
+
+
+
+#- name: master install kubeadm
+#  hosts: master_nodes   #worker_nodes #all
+#  become: yes
+#  become_user: root
+#  tasks:
+#  - name: Filter and return only selected facts
+#    ansible.builtin.setup:
 #      filter:
 #        - ansible_all_ipv4_addresses
-    register: ip_v4
-#    loop: "{{ groups['worker_nodes'] }}"
-  - debug: var=ip_v4
-  - debug:
-      var: ip_v4.ansible_facts.ansible_default_ipv4.address
-#  - debug: var=ip_v4.results[0].ansible_facts.ansible_all_ipv4_addresses[1]
-#  - debug: var=ip_v4.ansible_facts.ansible_all_ipv4_addresses[0]
+#    register: ip_v4
+##    loop: "{{ groups['worker_nodes'] }}"
+#  - debug: var=ip_v4
+#  - debug:
+#      var: ip_v4.ansible_facts.ansible_all_ipv4_addresses[1]
+#  - debug: var=ansible_facts.ansible_all_ipv4_addresses[1]
+##      var: ip_v4.ansible_facts.ansible_default_ipv4.address
+##  - debug: var=ip_v4.results[0].ansible_facts.ansible_all_ipv4_addresses[1]
+##  - debug: var=ip_v4.ansible_facts.ansible_all_ipv4_addresses[0]
+#
+#  - debug: var=ansible_facts.locally_reachable_ips.ipv4[0]
 
 #  - debug: var=groups['worker_nodes']
+#  ansible_facts.locally_reachable_ips.ipv4[0]

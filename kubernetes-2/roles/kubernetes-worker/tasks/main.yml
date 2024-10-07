@@ -1,5 +1,5 @@
 ---
-- debug: var=ansible_facts
+#- debug: var=ansible_facts
 
 - name: Gathering info
   action: setup

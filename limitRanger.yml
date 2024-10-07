@@ -20,5 +20,5 @@ spec:
         
 
 # source <(kubectl completion bash | sed s/kubectl/k/g)      
-# ssh ubuntu@18.221.197.72 "for i in {1..5};do date; ls ; done"
+# /ssh ubuntu@18.221.197.72 "for i in {1..5};do date; ls ; done"
 # for i in $(cat kubernetes_cluster); do echo $i ; done
