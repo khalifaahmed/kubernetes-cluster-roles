@@ -1,6 +1,6 @@
 name                   = "gp_dev"
 vpc_cidr               = "10.0.0.0/16"
-provider_region        = "us-west-1"
+provider_region        = "us-east-2"
 instance_type          = "t3.micro"
 key                    = "stockholm_key"
 access_ip_v4           = "0.0.0.0/0"

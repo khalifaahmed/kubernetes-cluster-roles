@@ -59,8 +59,9 @@ resource "aws_eip_association" "master_nodes_eips_assoc" {
 }
 
 data "aws_eips" "masters_eips" {
+  depends_on = [null_resource.kube_cluster]
   tags = {
-    "master" = "true"
+    "Name" = "*master*"
   }
 }
 
@@ -104,6 +105,7 @@ resource "aws_eip_association" "worker_nodes_eips_assoc" {
 }
 
 data "aws_eips" "workers_eips" {
+  depends_on = [null_resource.kube_cluster]
   tags = {
     "worker" = "true"
   }
@@ -158,7 +160,6 @@ cat kubernetes-2/worker_nodes >> kubernetes-2/kubernetes_cluster;
 #cat kubernetes-2/worker_nodes >> kubernetes-2/kubernetes_cluster;
 
 #configure ssh config file on the local host
-#echo '' > ssh_config_file
 echo "Host *" > ssh_config_file  ;  echo "    StrictHostKeyChecking no" >> ssh_config_file;
 j=0; for i in $(cat kubernetes-2/master_nodes); do  echo "Host master$j"; echo "    HostName $i"; echo "    User ubuntu"; echo "    Port 22"; echo "    StrictHostKeyChecking no"; let j+=1 ; done >> ssh_config_file;
 j=0; for i in $(cat kubernetes-2/worker_nodes); do  echo "Host worker$j"; echo "    HostName $i"; echo "    User ubuntu"; echo "    Port 22"; echo "    StrictHostKeyChecking no"; let j+=1 ; done >> ssh_config_file;
@@ -182,12 +183,14 @@ j=0; for i in `cat kubernetes-2/worker_nodes`; do ssh ubuntu@$i "sudo hostnamect
 
 #echo ${aws_instance.worker_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster  ;  echo ${aws_instance.worker_nodes[1].public_ip} >> ./kubernetes-2/kubernetes_cluster
 
-sleep 100
+#sleep 100
 ansible-playbook --inventory ./kubernetes-2/kubernetes_cluster --user ubuntu ./kubernetes-2/master-node.yml
 
     EOT
   }
   depends_on = [aws_instance.master_nodes[0], aws_instance.worker_nodes[0], aws_instance.worker_nodes[1]]
+  #  depends_on = [aws_instance.master_nodes[0], join(",", aws_instance.worker_nodes[*].id)]
+
   lifecycle {
     replace_triggered_by = [aws_instance.master_nodes[0], aws_instance.worker_nodes[0], aws_instance.worker_nodes[1]]
   }
@@ -196,13 +199,46 @@ ansible-playbook --inventory ./kubernetes-2/kubernetes_cluster --user ubuntu ./k
   }
 }
 
-resource "null_resource" "exprimental" {
+
+
+resource "null_resource" "configure_kubeconfig_on_host" {
+  provisioner "local-exec" {
+    command = <<EOT
+scp ubuntu@${aws_instance.master_nodes[0].public_ip}:/etc/kubernetes/pki/ca.crt ./kubernetes-2/kube-certs/ca.crt
+scp ubuntu@${aws_instance.master_nodes[0].public_ip}:/home/ubuntu/kube-certs/ahmed.crt ./kubernetes-2/kube-certs/ahmed.crt
+ssh ubuntu@${aws_instance.master_nodes[0].public_ip} 'cat /home/ubuntu/kube-certs/ahmed.key' > ./kubernetes-2/kube-certs/ahmed.key
+kubectl config set-cluster cloud-cluster --certificate-authority=./kubernetes-2/kube-certs/ca.crt --server=https://${aws_instance.master_nodes[0].public_ip}:51555
+kubectl config set-credentials ahmed --client-certificate=./kubernetes-2/kube-certs/ahmed.crt --client-key=./kubernetes-2/kube-certs/ahmed.key
+kubectl config set-context ahmed@cloud-cluster --cluster=cloud-cluster --user=ahmed --namespace=default
+kubectl config use-context ahmed@cloud-cluster
+    EOT
+  }
+  depends_on = [null_resource.kube_cluster]
+}
+
+
+
+
+resource "null_resource" "exprimental_2" {
+  depends_on = [null_resource.kube_cluster]
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     command     = <<EOT
 
+echo '' > f2
+%{for ip in data.aws_eips.workers_eips.public_ips}
+echo "${ip}" >> f2
+%{endfor}
+sed -i '/^$/d' f2
+
+echo '' > f1
+%{for ip in aws_eip.worker_nodes_eips.*.public_ip}
+echo "${ip}" >> f1
+%{endfor}
+sed -i '/^$/d' f1
+
 echo '' > ./kubernetes-2/terraform_output_master_nodes
-terraform output -json masters_eips | jq -r ".[0]" > ./kubernetes-2/terraform_output_master_nodes
+terraform output -json masters_eips | jq -r ".[0]" >> ./kubernetes-2/terraform_output_master_nodes
 sed -i '/^$/d' ./kubernetes-2/terraform_output_master_nodes
 echo '' > ./kubernetes-2/terraform_output_worker_nodes
 for i in $(seq 0 $((${local.worker_nodes_count}-1))); do    terraform output -json workers_eips | jq -r ".[$i]" >> ./kubernetes-2/terraform_output_worker_nodes ; done
@@ -240,6 +276,7 @@ sed -i '/^$/d' ./kubernetes-2/terraform_output_worker_nodes
 #  }
 #  depends_on = [aws_instance.master_nodes[0],aws_instance.worker_nodes[0],aws_instance.worker_nodes[1]]
 #}
+
 
 #resource "null_resource" "configure_kubeconfig_on_host" {
 #  provisioner "local-exec" {
