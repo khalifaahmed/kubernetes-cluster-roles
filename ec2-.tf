@@ -6,7 +6,7 @@ resource "tls_private_key" "key_pair" {
 }
 # Create the Key Pair
 resource "aws_key_pair" "key_pair" {
-  key_name   = "${data.aws_region.current_region.name}-terraform-key"
+  key_name   = "${data.aws_region.current_region.region}-terraform-key"
   public_key = tls_private_key.key_pair.public_key_openssh
 }
 # Save file
@@ -240,14 +240,14 @@ echo "${ip}" >> f1
 %{endfor}
 sed -i '/^$/d' f1
 
-#This does not work man
-bash
-echo '' > ./kubernetes-2/terraform_output_master_nodes
-terraform output -json masters_eips | jq -r ".[0]" >> ./kubernetes-2/terraform_output_master_nodes
-sed -i '/^$/d' ./kubernetes-2/terraform_output_master_nodes
-echo '' > ./kubernetes-2/terraform_output_worker_nodes
-for i in $(seq 0 $((${local.worker_nodes_count}-1))); do    terraform output -json workers_eips | jq -r ".[$i]" >> ./kubernetes-2/terraform_output_worker_nodes ; done
-sed -i '/^$/d' ./kubernetes-2/terraform_output_worker_nodes
+# #This does not work man
+# bash
+# echo '' > ./kubernetes-2/terraform_output_master_nodes
+# terraform output -json masters_eips | jq -r ".[0]" >> ./kubernetes-2/terraform_output_master_nodes
+# sed -i '/^$/d' ./kubernetes-2/terraform_output_master_nodes
+# echo '' > ./kubernetes-2/terraform_output_worker_nodes
+# for i in $(seq 0 $((${local.worker_nodes_count}-1))); do    terraform output -json workers_eips | jq -r ".[$i]" >> ./kubernetes-2/terraform_output_worker_nodes ; done
+# sed -i '/^$/d' ./kubernetes-2/terraform_output_worker_nodes
 
     EOT
   }

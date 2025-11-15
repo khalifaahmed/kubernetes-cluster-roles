@@ -1,6 +1,5 @@
 *.terraform*
 *.tfstate*
 *terraform.tfstate*
-*key*
-*cer*
-join_command*
+*join_command*
+*terraform-key*

@@ -21,7 +21,7 @@ resource "aws_internet_gateway" "gw" {
 data "aws_region" "current_region" {}
 
 output "the_current_region_man" {
-  value = data.aws_region.current_region.name
+  value = data.aws_region.current_region.region
 }
 
 data "aws_availability_zones" "available" {}

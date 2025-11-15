@@ -194,8 +194,9 @@
 - name: deploy weave cni
   become: yes
   become_user: ubuntu
-  ansible.builtin.command: 
-    cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+  ansible.builtin.command:
+    cmd: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+#    cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
   changed_when: false
   when: not kube_init_stat.stat.exists
 
@@ -248,22 +249,28 @@
 
 - name: Install helm
   block:
-    - name: Add Helm apt key
-      apt_key:
-        url: https://baltocdn.com/helm/signing.asc
-        state: present
-      register: add_helm_repository_key
+#This files do not exist right now
+#    - name: Add Helm apt key
+#      apt_key:
+#        url: https://baltocdn.com/helm/signing.asc
+#        state: present
+#      register: add_helm_repository_key
+#
+#    - name: Add helm repository
+#      apt_repository:
+#        repo: "deb https://baltocdn.com/helm/stable/debian/ all main"
+#        state: present
+#        update_cache: true
+#
+#    - name: Install helm
+#      ansible.builtin.apt:
+#        pkg:
+#        - helm
 
-    - name: Add helm repository
-      apt_repository:
-        repo: "deb https://baltocdn.com/helm/stable/debian/ all main"
-        state: present
-        update_cache: true
-
-    - name: Install helm
-      ansible.builtin.apt:
-        pkg:
-        - helm
+#This is working
+    - ansible.builtin.command:
+        cmd: "curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
+      changed_when: false
       register: helm_install_stat
   when: not kube_init_stat.stat.exists
 
@@ -281,47 +288,47 @@
   when:
   - helm_install_stat.changed == true
 
-- name: create ahmed user in kubernetes
-  become: true
-  become_user: ubuntu
-  block:
-    - name: Copy file ../../kube-certs-skel/ to /home/ubuntu/kube-certs/
-      ansible.builtin.copy:
-        src: /home/ahmed/Desktop/terraform/kubernetes-cluster-roles/kubernetes-2/kube-certs-skel/
-        dest: /home/ubuntu/kube-certs/
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
+# - name: create ahmed user in kubernetes
+#   become: true
+#   become_user: ubuntu
+#   block:
+#     - name: Copy file ../../kube-certs-skel/ to /home/ubuntu/kube-certs/
+#       ansible.builtin.copy:
+#         src: /home/ahmed/Desktop/terraform/kubernetes-cluster-roles/kubernetes-2/kube-certs-skel/
+#         dest: /home/ubuntu/kube-certs/
+#         owner: ubuntu
+#         group: ubuntu
+#         mode: '0755'
 
-    - name: generate kubernetes admin user key & csr
-      shell: >
-        openssl genrsa -out /home/ubuntu/kube-certs/ahmed.key 2048 ;
-        openssl req -new -key /home/ubuntu/kube-certs/ahmed.key -subj "/CN=ahmed" -out /home/ubuntu/kube-certs/ahmed.csr
+#     - name: generate kubernetes admin user key & csr
+#       shell: >
+#         openssl genrsa -out /home/ubuntu/kube-certs/ahmed.key 2048 ;
+#         openssl req -new -key /home/ubuntu/kube-certs/ahmed.key -subj "/CN=ahmed" -out /home/ubuntu/kube-certs/ahmed.csr
 
-    - name: base64 csr
-      shell: cat /home/ubuntu/kube-certs/ahmed.csr | base64 | tr -d "\n"
-      register: ahmed_csr_base64
+#     - name: base64 csr
+#       shell: cat /home/ubuntu/kube-certs/ahmed.csr | base64 | tr -d "\n"
+#       register: ahmed_csr_base64
 
-    - name: edit csr.yaml with csr_base64 csr encoded
-      ansible.builtin.lineinfile:
-        path: /home/ubuntu/kube-certs/ahmed.csr.yml
-        regexp: '^  request: '
-        line: "  request: {{ahmed_csr_base64.stdout}}"
+#     - name: edit csr.yaml with csr_base64 csr encoded
+#       ansible.builtin.lineinfile:
+#         path: /home/ubuntu/kube-certs/ahmed.csr.yml
+#         regexp: '^  request: '
+#         line: "  request: {{ahmed_csr_base64.stdout}}"
 
-    - name: create kubeconfig file for kubernetes admin user
-      shell: > 
-        kubectl apply -f /home/ubuntu/kube-certs/ahmed.csr.yml ;
-        kubectl certificate approve ahmed ;
-        kubectl get csr ahmed -o yaml | grep "certificate:" | cut -f2 -d ":" | tr -d " " | base64 --decode > /home/ubuntu/kube-certs/ahmed.crt ; 
-        kubectl apply -f /home/ubuntu/kube-certs/ahmed-cr.yml ;
-        kubectl apply -f /home/ubuntu/kube-certs/ahmed-crb.yml ;
-        cp /home/ubuntu/.kube/config /home/ubuntu/.kube/config.original ;
-        kubectl config set-cluster ahmed-cluster --certificate-authority=/etc/kubernetes/pki/ca.crt --server=https://{{ansible_facts.locally_reachable_ips.ipv4[0]}}:6443 ;
-        kubectl config set-credentials ahmed --client-certificate=/home/ubuntu/kube-certs/ahmed.crt --client-key=/home/ubuntu/kube-certs/ahmed.key ;
-        kubectl config set-context ahmed@ahmed-cluster --cluster=ahmed-cluster --user=ahmed --namespace=default ;
-        kubectl config use-context ahmed@ahmed-cluster ;
-        mv /home/ubuntu/.kube/config /home/ubuntu/kube-certs/ahmed-kubeconfig ;
-        cp /home/ubuntu/.kube/config.original /home/ubuntu/.kube/config
+#     - name: create kubeconfig file for kubernetes admin user
+#       shell: > 
+#         kubectl apply -f /home/ubuntu/kube-certs/ahmed.csr.yml ;
+#         kubectl certificate approve ahmed ;
+#         kubectl get csr ahmed -o yaml | grep "certificate:" | cut -f2 -d ":" | tr -d " " | base64 --decode > /home/ubuntu/kube-certs/ahmed.crt ; 
+#         kubectl apply -f /home/ubuntu/kube-certs/ahmed-cr.yml ;
+#         kubectl apply -f /home/ubuntu/kube-certs/ahmed-crb.yml ;
+#         cp /home/ubuntu/.kube/config /home/ubuntu/.kube/config.original ;
+#         kubectl config set-cluster ahmed-cluster --certificate-authority=/etc/kubernetes/pki/ca.crt --server=https://{{ansible_facts.locally_reachable_ips.ipv4[0]}}:6443 ;
+#         kubectl config set-credentials ahmed --client-certificate=/home/ubuntu/kube-certs/ahmed.crt --client-key=/home/ubuntu/kube-certs/ahmed.key ;
+#         kubectl config set-context ahmed@ahmed-cluster --cluster=ahmed-cluster --user=ahmed --namespace=default ;
+#         kubectl config use-context ahmed@ahmed-cluster ;
+#         mv /home/ubuntu/.kube/config /home/ubuntu/kube-certs/ahmed-kubeconfig ;
+#         cp /home/ubuntu/.kube/config.original /home/ubuntu/.kube/config
 
 #  when: not kube_init_stat.stat.exists
 
