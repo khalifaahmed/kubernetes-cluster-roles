@@ -195,8 +195,8 @@
   become: yes
   become_user: ubuntu
   ansible.builtin.command:
-    cmd: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
-#    cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+    # cmd: kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+    cmd: kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
   changed_when: false
   when: not kube_init_stat.stat.exists
 
@@ -268,11 +268,11 @@
 #        - helm
 
 #This is working
-    - ansible.builtin.command:
+    - ansible.builtin.shell:
         cmd: "curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash"
       changed_when: false
       register: helm_install_stat
-  when: not kube_init_stat.stat.exists
+  # when: not kube_init_stat.stat.exists
 
 - name: Add helm repos
   become: yes
@@ -285,8 +285,8 @@
   - helm repo add jetstack https://charts.jetstack.io
   - helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
   - helm repo update  
-  when:
-  - helm_install_stat.changed == true
+  # when:
+  # - helm_install_stat.changed == true
 
 # - name: create ahmed user in kubernetes
 #   become: true

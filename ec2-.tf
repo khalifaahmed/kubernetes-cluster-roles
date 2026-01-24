@@ -183,7 +183,7 @@ j=0; for i in `cat kubernetes-2/worker_nodes`; do ssh ubuntu@$i "sudo hostnamect
 
 #echo ${aws_instance.worker_nodes[0].public_ip} >> ./kubernetes-2/kubernetes_cluster  ;  echo ${aws_instance.worker_nodes[1].public_ip} >> ./kubernetes-2/kubernetes_cluster
 
-#sleep 100
+sleep 60
 ansible-playbook --inventory ./kubernetes-2/kubernetes_cluster --user ubuntu ./kubernetes-2/master-node.yml
 
     EOT
